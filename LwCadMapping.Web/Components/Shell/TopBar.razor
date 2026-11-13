@@ -1,0 +1,100 @@
+@using LwCadMapping.Web.State
+
+@* Top bar: agency name, the app chip, the legacy menu bar kept item for item (DxMenu), identity, clock, CAD link, lock, theme. *@
+<header class="lw-topbar">
+    <div class="brand">
+        <span class="primary">@S.AgencyName.Primary</span>
+        <span class="secondary">@S.AgencyName.Secondary</span>
+        <span class="app-chip">CAD Mapping</span>
+    </div>
+
+    <DxMenu CssClass="lw-menubar" Orientation="Orientation.Horizontal" DisplayMode="MenuDisplayMode.Desktop"
+            CollapseItemsToHamburgerMenu="false" SizeMode="SizeMode.Medium">
+        <Items>
+            <DxMenuItem Text="Program">
+                <Items>
+                    <DxMenuItem Text="Copy Map to Clipboard  (Ctrl+Shift+C)" Click="@(() => S.CopyMap())" />
+                    <DxMenuItem Text="Print Screen" Click="@(() => S.PrintMap())" />
+                    <DxMenuItem Text="Exit" BeginGroup="true" Click="@Exit" />
+                </Items>
+            </DxMenuItem>
+            <DxMenuItem Text="Controls">
+                <Items>
+                    <DxMenuItem Text="Map">
+                        <Items>
+                            <DxMenuItem Text="Reset Map  (Ctrl+R)" Click="@(() => S.ResetMap())" />
+                            <DxMenuItem Text="Zoom In  (+)" Click="@(() => S.ZoomBy(1))" />
+                            <DxMenuItem Text="Zoom Out  (-)" Click="@(() => S.ZoomBy(-1))" />
+                            <DxMenuItem Text="Full Extent" Click="@(() => S.FullExtent())" />
+                            <DxMenuItem Text="Mark Location  (Ctrl+M)" BeginGroup="true" IconCssClass="@Check(S.IsMarking)" Click="@(() => S.SetMarking(!S.IsMarking))" />
+                            <DxMenuItem Text="Show All Units" Click="@(() => S.ShowAllUnits())" />
+                        </Items>
+                    </DxMenuItem>
+                    <DxMenuItem Text="Switch Base Map">
+                        <Items>
+                            @if (S.HasApiKey)
+                            {
+                                <DxMenuItem Text="Street Map" IconCssClass="@Check(S.SelectedBaseMap == "Streets (B)")" Click="@(() => S.SetBaseMap("Streets (B)"))" />
+                                <DxMenuItem Text="Topographic Map" IconCssClass="@Check(S.SelectedBaseMap == "Topographic")" Click="@(() => S.SetBaseMap("Topographic"))" />
+                                <DxMenuItem Text="Gray Map" IconCssClass="@Check(S.SelectedBaseMap == "Light Gray Canvas")" Click="@(() => S.SetBaseMap("Light Gray Canvas"))" />
+                                <DxMenuItem Text="Imagery Map" IconCssClass="@Check(S.SelectedBaseMap == "Imagery (With Labels)")" Click="@(() => S.SetBaseMap("Imagery (With Labels)"))" />
+                            }
+                            else
+                            {
+                                <DxMenuItem Text="Street Map (OpenStreetMap)" IconCssClass="@Check(S.SelectedBaseMap == BaseMaps.OpenStreetMap)" Click="@(() => S.SetBaseMap(BaseMaps.OpenStreetMap))" />
+                                <DxMenuItem Text="Topographic, Gray, Imagery: need an ArcGIS key" CssClass="mi-disabled" Click="@(() => S.SetBaseMap("Topographic"))" />
+                            }
+                        </Items>
+                    </DxMenuItem>
+                    <DxMenuItem Text="GPS">
+                        <Items>
+                            <DxMenuItem Text="@(S.CanSimulateGps ? "Show Unit Location (simulated)" : "Show Unit Location (no AVL)")" IconCssClass="@Check(S.IsGpsTracking)"
+                                        Click="@(() => S.SetGpsTracking(!S.IsGpsTracking))" />
+                        </Items>
+                    </DxMenuItem>
+                    <DxMenuItem Text="Show Lat/Long (Decimal)" BeginGroup="true" IconCssClass="@Check(S.ShowLatLongDec)" Click="@(() => S.SetCoordinateFormats(dec: !S.ShowLatLongDec))" />
+                    <DxMenuItem Text="Show Lat/Long (Degrees)" IconCssClass="@Check(S.ShowLatLongDeg)" Click="@(() => S.SetCoordinateFormats(deg: !S.ShowLatLongDeg))" />
+                    <DxMenuItem Text="Show Map Coordinates" IconCssClass="@Check(S.ShowMapCoords)" Click="@(() => S.SetCoordinateFormats(map: !S.ShowMapCoords))" />
+                    <DxMenuItem Text="Focus Maps Panel  (Ctrl+B)" BeginGroup="true" IconCssClass="@Check(S.IsFocusPanelExpanded)" Click="@(() => Toggle(() => S.IsFocusPanelExpanded = !S.IsFocusPanelExpanded))" />
+                    <DxMenuItem Text="Controls Panel  (Ctrl+L)" IconCssClass="@Check(S.IsControlsPanelExpanded)" Click="@(() => Toggle(() => S.IsControlsPanelExpanded = !S.IsControlsPanelExpanded))" />
+                </Items>
+            </DxMenuItem>
+            <DxMenuItem Text="Tools">
+                <Items>
+                    <DxMenuItem Text="Load Units" Click="@(() => S.LoadUnits())" />
+                    <DxMenuItem Text="Load Premises" Click="@(() => S.LoadPremises())" />
+                </Items>
+            </DxMenuItem>
+            <DxMenuItem Text="Help">
+                <Items>
+                    <DxMenuItem Text="About  (F1)" Click="@(() => Toggle(() => S.IsAboutOpen = true))" />
+                </Items>
+            </DxMenuItem>
+        </Items>
+    </DxMenu>
+
+    <span class="ident">ID: @(string.IsNullOrEmpty(S.Board.OperatorId) ? "-" : S.Board.OperatorId)</span>
+    <span class="ident">SESSION: @(string.IsNullOrEmpty(S.Board.SessionId) ? "-" : S.Board.SessionId)</span>
+
+    <span class="spacer"></span>
+    <Clock />
+    <button type="button" class="top-link" title="LW CAD System" @onclick="@(() => S.NotImplemented("Open LW CAD System"))">CAD</button>
+    <button type="button" class="top-tool" title="Lock this session" aria-label="Lock this session" @onclick="@(() => S.NotImplemented("Session lock"))"><Icon Name="lock" Size="17" /></button>
+    <button type="button" class="top-tool" title="Switch between light and dark" aria-label="Switch between light and dark" @onclick="OnToggleTheme"><Icon Name="@(S.IsDark ? "sun" : "moon")" Size="17" /></button>
+</header>
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+    [Parameter] public EventCallback OnToggleTheme { get; set; }
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private static string Check(bool on) => on ? "mi-check" : "mi-nocheck";
+
+    private void Toggle(Action a)
+    {
+        a();
+        S.NotifyChanged();
+    }
+
+    private Task Exit() => OnExit.InvokeAsync();
+}

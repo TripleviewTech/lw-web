@@ -1,0 +1,238 @@
+@* One call monitor - Views\CallListPanel.xaml: Stacked, Active or Delayed, as a
+   DevExpress DxGrid.
+
+   The highlight is the CALL, never a row position: the grid's selected item is
+   whichever call in this monitor has CadCall.IsSelected (KeyFieldName EventKey),
+   so when another console's change re-orders the list or moves the call to a
+   different monitor, the highlight goes with the call. Rows are not selected by
+   the grid's own click handling; a click selects the call through the shell.
+   The order is the view model's (priority, then time) - grid sorting is off.
+   A row's preview is the grid's detail row, driven by CadCall.IsExpanded. *@
+
+@using LwCadSystemUX.ViewModels
+@implements IDisposable
+
+<section class="@CardClass" data-lw-min="@Monitor.RowMinHeight.ToString("0")" aria-label="@Monitor.Title">
+    <header class="lw-mon-head">
+        <div class="lw-mon-title">
+            @* Stacked and Active fit to their rows; Delayed collapses to its header. *@
+            <button class="lw-tool" tabindex="-1" style="margin-left:-4px;margin-right:2px"
+                    title="@Monitor.ShrinkActionText" aria-label="@Monitor.ShrinkActionText"
+                    @onclick="() => Monitor.ToggleSizeCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.ChevronDown" Size="12" Rotate="@(Monitor.IsShrunk ? -90 : 0)" />
+            </button>
+            <LwIcon Data="@LwIcons.FromKey(Monitor.IconKey)" />
+            <h2>@Monitor.Title</h2>
+            <span class="lw-count @(Monitor.Count == 0 ? "zero" : Monitor.BadgeIsAlert ? "alert" : null)">@Monitor.Count</span>
+        </div>
+
+        <div class="lw-mon-tools">
+            <ColumnChooser Columns="Monitor.Columns" ResetCommand="_reset" ButtonId="@("lw-cols-" + ListKey)" />
+            <button class="lw-tool" tabindex="-1" title="Open this monitor in its own window" aria-label="Open this monitor in its own window"
+                    @onclick="() => Monitor.PopOutCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.PopOut" />
+            </button>
+            <button class="lw-tool @(Monitor.IsLocked ? "on" : null)" tabindex="-1" aria-pressed="@(Monitor.IsLocked ? "true" : "false")"
+                    title="Hold this list - stops the refresh re-ordering rows" aria-label="Hold this list"
+                    @onclick="() => Monitor.ToggleLockCommand.Execute(null)">
+                <LwIcon Data="@(Monitor.IsLocked ? LwIcons.Lock : LwIcons.Unlock)" />
+            </button>
+            <button class="lw-tool" tabindex="-1" title="Monitor options" aria-label="Monitor options"
+                    @onclick="() => Monitor.MoreCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+            </button>
+        </div>
+    </header>
+
+    @* Column headers need rows to head (ShowColumnHeader): an empty monitor, or
+       Delayed collapsed to its header, renders no grid. The layout is kept on
+       MonitorLayout / ColumnSpec, so it comes back with the rows. *@
+    @if (Monitor.ShowRows && Monitor.HasItems)
+    {
+        <div class="lw-gridwrap @(Monitor.IsFitted ? "fitted" : null)" tabindex="-1" role="listbox" data-lw-list="@ListKey"
+             aria-label="@(Monitor.Title + " calls")"
+             style="@(Monitor.IsFitted ? "max-height:" + FittedHeight + "px" : null)">
+            <DxGrid @ref="_grid" Data="Monitor.Items" KeyFieldName="EventKey"
+                    SelectionMode="GridSelectionMode.Single" AllowSelectRowByClick="false"
+                    SelectedDataItem="Selected" RowClick="OnRowClick" CustomizeElement="Customize"
+                    AllowSort="false" AllowGroup="false" ContextMenus="GridContextMenus.None"
+                    AllowColumnReorder="true" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                    GridlinesVisible="Gridlines.All" HighlightRowOnHover="true" TextWrapEnabled="false"
+                    ShowAllRows="true" PagerVisible="false"
+                    DetailRowDisplayMode="GridDetailRowDisplayMode.Auto"
+                    DetailExpandButtonDisplayMode="GridDetailExpandButtonDisplayMode.Never"
+                    SizeMode="SizeMode.Small" CssClass="lw-grid">
+                <Columns>
+                    @* The preview chevron (the legacy row's expander). *@
+                    <DxGridDataColumn FieldName="IsExpanded" Caption=" " Name="Expand" Width="30px" MinWidth="30" VisibleIndex="0"
+                                      FixedPosition="GridColumnFixedPosition.Left" AllowReorder="false" ShowInColumnChooser="false">
+                        <CellDisplayTemplate>
+                            @{ var call = (CadCall)context.DataItem; }
+                            <button class="lw-tool lw-row-tool" tabindex="-1" title="Show call detail" aria-label="Show call detail"
+                                    aria-expanded="@(call.IsExpanded ? "true" : "false")"
+                                    @onclick="() => Shell.ToggleCallExpandCommand.Execute(call)" @onclick:stopPropagation="true">
+                                <LwIcon Data="@LwIcons.ChevronDown" Size="12" Rotate="@(call.IsExpanded ? 0 : -90)" />
+                            </button>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+
+                    @foreach (var spec in Monitor.Columns)
+                    {
+                        var column = spec;
+                        <DxGridDataColumn @key="column.Key" FieldName="@FieldFor(column.Key)" Caption="@column.Header" Name="@column.Key"
+                                          Visible="column.IsVisible" VisibleChanged="v => Layout.SetVisible(column, v)"
+                                          Width="@Layout.WidthOf(column)" WidthChanged="w => Layout.SetWidth(column, w)"
+                                          VisibleIndex="Layout.OrderOf(column)" VisibleIndexChanged="i => Layout.SetOrder(column, i)"
+                                          MinWidth="@(column.IsFlexible ? 100 : (int)LwCadSystemUX.Models.ColumnSpec.MinWidth)" ShowInColumnChooser="column.CanHide">
+                            <CellDisplayTemplate>
+                                @{ var call = (CadCall)context.DataItem; }
+                                @if (column.Key == "Agency")
+                                {
+                                    @* DSE1_EVENT_TYPE as the same badge the Unit Monitor puts in front of a unit. *@
+                                    <span class="lw-ag @MonitorColumns.AgencyClass(call.AgencyCode)" title="@call.AgencyCode">@call.AgencyCode</span>
+                                }
+                                else
+                                {
+                                    var text = MonitorColumns.CallCell(column, call);
+                                    <span title="@text">@text</span>
+                                }
+                            </CellDisplayTemplate>
+                        </DxGridDataColumn>
+                    }
+
+                    @* The row menu - kept on screen however wide the columns are dragged. *@
+                    <DxGridDataColumn FieldName="EventNo" Caption=" " Name="RowMenu" Width="32px" MinWidth="32"
+                                      FixedPosition="GridColumnFixedPosition.Right" AllowReorder="false" ShowInColumnChooser="false">
+                        <CellDisplayTemplate>
+                            @{ var call = (CadCall)context.DataItem; }
+                            <button class="lw-tool lw-row-tool lw-rowmenu-btn" tabindex="-1" title="Row options" aria-label="Row options"
+                                    @onclick="e => Host.ShowCallMenu(Monitor, call, e)" @onclick:stopPropagation="true">
+                                <LwIcon Data="@LwIcons.Ellipsis" Size="12" Solid="true" />
+                            </button>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+
+                <DetailRowTemplate>
+                    @{ var call = (CadCall)context.DataItem; }
+                    <div class="lw-detail">
+                        <div><span class="lw-label">Event No.</span><span class="lw-value">@call.EventNo</span></div>
+                        <div><span class="lw-label">Call Type</span><span class="lw-value">@call.CallCodeText</span></div>
+                        <div><span class="lw-label">Case No.</span><span class="lw-value">@call.CaseNo</span></div>
+                        <div>
+                            <span class="lw-label">Units Assigned</span>
+                            @if (call.HasAssignedUnits)
+                            {
+                                @foreach (var unit in call.AssignedUnits)
+                                {
+                                    <span class="lw-unit-chip @MonitorColumns.AgencyClass(unit.AgencyCode)" title="@unit.AgencyCode">@unit.UnitNo</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="lw-muted">None</span>
+                            }
+                        </div>
+                        <div class="span2"><span class="lw-label">Location</span><span class="lw-value">@call.Location</span></div>
+                        <div class="span2"><span class="lw-label">Premise</span><span class="lw-value">@call.Premise</span></div>
+                        <div class="span4"><span class="lw-label">Notes</span><span class="lw-value" style="white-space:pre-wrap">@call.Notes</span></div>
+                    </div>
+                </DetailRowTemplate>
+            </DxGrid>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public CallListViewModel Monitor { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+    [Parameter, EditorRequired] public string ListKey { get; set; } = default!;
+    [Parameter, EditorRequired] public MonitorLayout Layout { get; set; } = default!;
+    [Parameter] public CadCall? Cursor { get; set; }
+    [CascadingParameter] public CadShell Host { get; set; } = default!;
+
+    private DxGrid? _grid;
+    private RelayCommand _reset = default!;
+    private CadCall? _lastSelected;
+    private bool _syncing;
+
+    private string CardClass =>
+        "lw-monitor" + (Monitor.IsFitted ? " fitted" : string.Empty) + (!Monitor.ShowRows ? " collapsed" : string.Empty);
+
+    /// <summary>The highlighted call, when it is on this monitor.</summary>
+    private CadCall? Selected => Monitor.Items.FirstOrDefault(c => c.IsSelected);
+
+    /// <summary>A fitted monitor grows to FitRowLimit rows, then scrolls (header plus rows).</summary>
+    private static int FittedHeight => 32 + CallListViewModel.FitRowLimit * 29;
+
+    protected override void OnInitialized()
+    {
+        // Reset to default: the view model puts back visibility and widths; the
+        // layout puts back the column order and the flexible column's width.
+        _reset = new RelayCommand(() =>
+        {
+            Layout.ResetOrder();
+            Monitor.ResetColumnsCommand.Execute(null);
+        });
+    }
+
+    private static string FieldFor(string key) => key switch
+    {
+        "Agency" => nameof(CadCall.AgencyCode),
+        "Jur" => nameof(CadCall.Jurisdiction),
+        "Priority" => nameof(CadCall.PriorityText),
+        _ => key
+    };
+
+    private void OnRowClick(GridRowClickEventArgs e)
+    {
+        if (e.Grid.GetDataItem(e.VisibleIndex) is CadCall call) Host.SelectCallRow(Monitor, call);
+    }
+
+    private void Customize(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType != GridElementType.DataRow) return;
+        if (e.Grid.GetDataItem(e.VisibleIndex) is not CadCall call) return;
+
+        // A stable id per call, for Ctrl+W / Alt+W to find the row's menu button.
+        e.Attributes["id"] = CadShell.RowId(ListKey, call);
+        e.Attributes["aria-label"] = call.ToString();
+        if (call.IsSelected) e.CssClass = "lw-sel";
+        else if (ReferenceEquals(call, Cursor)) e.CssClass = "lw-cursor";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_grid == null || _syncing) return;
+        _syncing = true;
+        try
+        {
+            // The preview follows CadCall.IsExpanded, whatever position the row is at.
+            for (int i = 0; i < Monitor.Items.Count; i++)
+            {
+                var expanded = Monitor.Items[i].IsExpanded;
+                if (_grid.IsDetailRowExpanded(i) == expanded) continue;
+                if (expanded) _grid.ExpandDetailRow(i); else _grid.CollapseDetailRow(i);
+            }
+
+            // Bring the highlighted call into view when it arrives in this monitor
+            // (another console moved it here) or the cursor moves onto it.
+            var selected = Selected;
+            if (selected != null && !ReferenceEquals(selected, _lastSelected))
+            {
+                await _grid.MakeDataItemVisibleAsync(selected);
+            }
+
+            _lastSelected = selected;
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
+    public void Dispose() => _grid = null;
+}

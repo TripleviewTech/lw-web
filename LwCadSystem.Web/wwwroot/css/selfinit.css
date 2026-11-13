@@ -1,0 +1,82 @@
+/* Panel styles (selfinit) - Self Initiate / Traffic Stop and Activate Unit.
+   Ported from Views\SelfInitPanel.xaml / UnitActivatePanel.xaml. See
+   cadsystem.css for the shared panel classes. */
+
+/* ------------------------------------------------- the slide-over */
+.lw-si { width: 524px; max-width: 100vw; font-size: var(--lw-size-body); }
+
+.lw-si-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex: none; height: 34px; padding: 0 12px 0 18px;
+  background: var(--lw-table-header); border-bottom: 1px solid var(--lw-border);
+}
+.lw-si-received {
+  padding: 2px 8px; border-radius: 5px; background: var(--lw-subtle);
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px;
+}
+
+.lw-si-banner {
+  display: flex; align-items: center; gap: 7px; flex: none;
+  padding: 8px 18px; background: var(--lw-danger-soft); color: var(--lw-danger);
+}
+.lw-si-banner .lw-icon { flex: none; }
+
+.lw-si-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 18px; scrollbar-width: thin; }
+.lw-si-body > div { margin-bottom: 12px; }
+
+.lw-si .lw-field-label { display: flex; align-items: center; gap: 6px; }
+.lw-si-check { color: var(--lw-success); display: inline-flex; }
+
+/* Layout grids - the XAML column sets. */
+.lw-si-grid { display: grid; column-gap: 8px; row-gap: 10px; align-items: end; }
+.lw-si-row { display: grid; column-gap: 12px; align-items: end; }
+.lw-si-unitrow { grid-template-columns: 120px minmax(0, 1fr); }
+.lw-si-unitsummary { padding-bottom: 6px; overflow-wrap: anywhere; }
+.lw-si-coderow { grid-template-columns: minmax(0, 1fr) 70px; column-gap: 14px; }
+.lw-si-areas { grid-template-columns: 72px repeat(5, minmax(0, 1fr)) 66px; }
+.lw-si-two { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
+.lw-si-tsvehicle { grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr) minmax(0, 1fr) 56px 56px; }
+.lw-si-sivehicle1, .lw-si-sivehicle2 { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 10px; }
+.lw-si-sivehicle1 { margin-bottom: 10px; }
+.lw-si-profile { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* Boxes: the busy-unit release, the vehicle and the racial profile. */
+.lw-si-busy { padding: 8px 10px; border-radius: 6px; background: var(--lw-warning-soft); }
+.lw-si-busytext { margin-bottom: 6px; }
+.lw-si-box { padding: 12px; border-radius: 8px; background: var(--lw-subtle); }
+.lw-si-boxtitle { font-weight: 600; margin-bottom: 8px; }
+.lw-si-officername { text-align: right; margin-top: 6px; min-height: 1em; }
+
+.lw-si-upper input { text-transform: uppercase; }
+.lw-si-center input { text-align: center; }
+.lw-si-area input { padding-left: 6px; padding-right: 6px; }
+
+/* Premise: red with hazards, accent when there is a list to pick from. */
+.lw-si-premise { position: relative; }
+.lw-si-premise input { padding-right: 56px; }
+.lw-si-premise.hazard input { color: var(--lw-danger); font-weight: 600; }
+.lw-si-premise.list input { color: var(--lw-accent); }
+.lw-si-premise-tools { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
+
+/* The indicator strip. */
+.lw-si-chips { display: flex; flex-wrap: wrap; margin-bottom: 6px !important; }
+.lw-chip.warn { background: var(--lw-warning-soft); border-color: var(--lw-warning); color: var(--lw-text); }
+
+.lw-si-notice { padding: 6px 10px; border-radius: 6px; background: var(--lw-warning-soft); }
+
+.lw-si-info { padding: 8px 8px 8px 12px; border-radius: 8px; background: var(--lw-subtle); }
+.lw-si-info-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lw-si-info-line { margin-bottom: 6px; }
+.lw-si-info-heading { font-weight: 600; overflow-wrap: anywhere; }
+
+.lw-si-narrative textarea { min-height: 84px; }
+
+/* -------------------------------------------------- Activate Unit */
+.lw-ua-body { padding: 14px 22px 4px; }
+.lw-ua-body > div { margin-bottom: 12px; }
+.lw-ua-row1 { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; }
+.lw-ua-crew { grid-template-columns: 90px minmax(0, 1fr) 90px minmax(0, 1fr); }
+.lw-ua-name { padding-bottom: 8px; }
+.lw-ua-areas { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* A block the agency does not use (IsEnabled=False in the XAML). */
+.lw-ua-off { opacity: .55; }

@@ -1,0 +1,181 @@
+@* The Unit Monitor - Views\UnitMonitorPanel.xaml, as a DevExpress DxGrid: the
+   All / Available / Overdue segmented filter with live counts, the police-only
+   funnel, the column chooser, the lock, and the unit rows. Unit carries the
+   agency badge and Time the timeout flag. The highlight is the UNIT
+   (CadUnit.IsSelected, KeyFieldName UnitNo), never a row position. *@
+
+@using LwCadSystemUX.ViewModels
+@implements IDisposable
+
+<div class="lw-units" data-lw-min="340">
+    <section class="lw-monitor" aria-label="Unit Monitor">
+        <header class="lw-mon-head">
+            <div class="lw-mon-title">
+                <LwIcon Data="@LwIcons.Monitor" />
+                <h2 style="margin-right:0">Unit Monitor</h2>
+                <div class="lw-segment" role="group" aria-label="Unit filter">
+                    <button class="@(Monitor.IsAllSelected ? "on" : null)" tabindex="-1" aria-pressed="@(Monitor.IsAllSelected ? "true" : "false")"
+                            @onclick='() => Monitor.SetFilterCommand.Execute("All")'>All <span class="lw-pill">@Monitor.AllCount</span></button>
+                    <button class="@(Monitor.IsAvailableSelected ? "on" : null)" tabindex="-1" aria-pressed="@(Monitor.IsAvailableSelected ? "true" : "false")"
+                            @onclick='() => Monitor.SetFilterCommand.Execute("Available")'>Available <span class="lw-pill">@Monitor.AvailableCount</span></button>
+                    <button class="@(Monitor.IsOverdueSelected ? "on" : null)" tabindex="-1" aria-pressed="@(Monitor.IsOverdueSelected ? "true" : "false")"
+                            @onclick='() => Monitor.SetFilterCommand.Execute("Overdue")'>Overdue <span class="lw-pill">@Monitor.OverdueCount</span></button>
+                </div>
+            </div>
+
+            <div class="lw-mon-tools">
+                <button class="lw-tool boxed @(Monitor.AgencyFilterOn ? "on" : null)" tabindex="-1"
+                        aria-pressed="@(Monitor.AgencyFilterOn ? "true" : "false")"
+                        title="Show police units only" aria-label="Filter by agency"
+                        @onclick="() => Monitor.ToggleAgencyFilterCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.Funnel" />
+                </button>
+                <ColumnChooser Columns="Monitor.Columns" ResetCommand="_reset" ButtonId="lw-cols-units" />
+                <button class="lw-tool" tabindex="-1" title="Open the Unit Monitor in its own window" aria-label="Open the Unit Monitor in its own window"
+                        @onclick="() => Monitor.PopOutCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.PopOut" />
+                </button>
+                <button class="lw-tool @(Monitor.IsLocked ? "on" : null)" tabindex="-1" aria-pressed="@(Monitor.IsLocked ? "true" : "false")"
+                        title="Hold this list - stops the refresh re-ordering rows" aria-label="Hold this list"
+                        @onclick="() => Monitor.ToggleLockCommand.Execute(null)">
+                    <LwIcon Data="@(Monitor.IsLocked ? LwIcons.Lock : LwIcons.Unlock)" />
+                </button>
+                <button class="lw-tool" tabindex="-1" title="Monitor options" aria-label="Monitor options"
+                        @onclick="() => Monitor.MoreCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+                </button>
+            </div>
+        </header>
+
+        <div class="lw-gridwrap" tabindex="-1" role="listbox" data-lw-list="units" aria-label="Units">
+            <DxGrid @ref="_grid" Data="Monitor.Items" KeyFieldName="UnitNo"
+                    SelectionMode="GridSelectionMode.Single" AllowSelectRowByClick="false"
+                    SelectedDataItem="Selected" RowClick="OnRowClick" CustomizeElement="Customize"
+                    AllowSort="false" AllowGroup="false" ContextMenus="GridContextMenus.None"
+                    AllowColumnReorder="true" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                    GridlinesVisible="Gridlines.All" HighlightRowOnHover="true" TextWrapEnabled="false"
+                    ShowAllRows="true" PagerVisible="false"
+                    SizeMode="SizeMode.Small" CssClass="lw-grid">
+                <Columns>
+                    @foreach (var spec in Monitor.Columns)
+                    {
+                        var column = spec;
+                        <DxGridDataColumn @key="column.Key" FieldName="@FieldFor(column.Key)" Caption="@column.Header" Name="@column.Key"
+                                          Visible="column.IsVisible" VisibleChanged="v => Layout.SetVisible(column, v)"
+                                          Width="@Layout.WidthOf(column)" WidthChanged="w => Layout.SetWidth(column, w)"
+                                          VisibleIndex="Layout.OrderOf(column)" VisibleIndexChanged="i => Layout.SetOrder(column, i)"
+                                          MinWidth="@(column.IsFlexible ? 100 : (int)LwCadSystemUX.Models.ColumnSpec.MinWidth)" ShowInColumnChooser="column.CanHide">
+                            <CellDisplayTemplate>
+                                @{ var unit = (CadUnit)context.DataItem; }
+                                @switch (column.Key)
+                                {
+                                    case "Unit":
+                                        <span class="lw-unit-cell">
+                                            <span class="lw-ag unit @MonitorColumns.AgencyClass(unit.AgencyCode)">@unit.AgencyCode</span>
+                                            <span class="lw-ellipsis">@unit.UnitNo</span>
+                                            @if (unit.HasPendingChange)
+                                            {
+                                                <span class="lw-pending-dot" title="Changed on this console - not written to the CAD database"></span>
+                                            }
+                                        </span>
+                                        break;
+                                    case "Time":
+                                        <span class="lw-flag">
+                                            @if (unit.IsOverdue)
+                                            {
+                                                <span title="Status timer has expired"><LwIcon Data="@LwIcons.Warning" Size="12" /></span>
+                                            }
+                                            @unit.StatusTime
+                                        </span>
+                                        break;
+                                    default:
+                                        var text = MonitorColumns.UnitCell(column, unit);
+                                        <span title="@text">@text</span>
+                                        break;
+                                }
+                            </CellDisplayTemplate>
+                        </DxGridDataColumn>
+                    }
+
+                    <DxGridDataColumn FieldName="UnitNo" Caption=" " Name="RowMenu" Width="32px" MinWidth="32"
+                                      FixedPosition="GridColumnFixedPosition.Right" AllowReorder="false" ShowInColumnChooser="false">
+                        <CellDisplayTemplate>
+                            @{ var unit = (CadUnit)context.DataItem; }
+                            <button class="lw-tool lw-row-tool lw-rowmenu-btn" tabindex="-1" title="Unit options" aria-label="Unit options"
+                                    @onclick="e => Host.ShowUnitMenu(unit, e)" @onclick:stopPropagation="true">
+                                <LwIcon Data="@LwIcons.Ellipsis" Size="12" Solid="true" />
+                            </button>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+            </DxGrid>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public UnitMonitorViewModel Monitor { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+    [Parameter, EditorRequired] public MonitorLayout Layout { get; set; } = default!;
+    [Parameter] public CadUnit? Cursor { get; set; }
+    [CascadingParameter] public CadShell Host { get; set; } = default!;
+
+    private DxGrid? _grid;
+    private RelayCommand _reset = default!;
+    private CadUnit? _lastSelected;
+
+    private CadUnit? Selected => Monitor.Items.FirstOrDefault(u => u.IsSelected);
+
+    protected override void OnInitialized()
+    {
+        _reset = new RelayCommand(() =>
+        {
+            Layout.ResetOrder();
+            Monitor.ResetColumnsCommand.Execute(null);
+        });
+    }
+
+    private static string FieldFor(string key) => key switch
+    {
+        "Unit" => nameof(CadUnit.UnitNo),
+        "Type" => nameof(CadUnit.UnitType),
+        "VehId" => nameof(CadUnit.VehicleId),
+        "Time" => nameof(CadUnit.StatusTime),
+        _ => key
+    };
+
+    private void OnRowClick(GridRowClickEventArgs e)
+    {
+        if (e.Grid.GetDataItem(e.VisibleIndex) is CadUnit unit) Host.SelectUnitRow(unit);
+    }
+
+    private void Customize(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType != GridElementType.DataRow) return;
+        if (e.Grid.GetDataItem(e.VisibleIndex) is not CadUnit unit) return;
+
+        e.Attributes["id"] = CadShell.RowId(unit);
+        e.Attributes["aria-label"] = unit.ToString();
+        if (unit.IsSelected) e.CssClass = "lw-sel";
+        else if (ReferenceEquals(unit, Cursor)) e.CssClass = "lw-cursor";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var selected = Selected;
+        if (_grid != null && selected != null && !ReferenceEquals(selected, _lastSelected))
+        {
+            try
+            {
+                await _grid.MakeDataItemVisibleAsync(selected);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        _lastSelected = selected;
+    }
+
+    public void Dispose() => _grid = null;
+}

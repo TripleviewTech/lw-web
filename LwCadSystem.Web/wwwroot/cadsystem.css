@@ -1,0 +1,477 @@
+/*
+  LW CAD System - the console's layout and controls, ported from LwCadSystemUX
+  Themes\Controls.xaml and the Views. Every colour is a --lw-* token from
+  _content/LwCad.Web.Shared/lwcad.css, so light and dark follow <html data-theme>.
+  Sizes follow Controls.xaml: body 12.5px, caption 11px, title 13.5px.
+*/
+
+:root {
+  --lw-size-caption: 11px;
+  --lw-size-body: 12.5px;
+  --lw-size-title: 13.5px;
+  --lw-row-height: 27px;
+}
+
+/* ---------------------------------------------------------------- DevExpress
+   Fluent, recoloured by the CAD tokens. html:root outranks the theme's own
+   :root so the override survives a runtime theme switch. Only the resting
+   surface, text, border and accent are mapped; hover/pressed shades stay the
+   theme's (which follows light/dark through IThemeChangeService). */
+html:root {
+  --dxds-color-content-neutral-default-rest: var(--lw-text);
+  --dxds-color-content-neutral-subdued-rest: var(--lw-text-muted);
+  --dxds-color-surface-neutral-default-rest: var(--lw-input);
+  --dxds-color-border-neutral-default-rest: var(--lw-border);
+  --dxds-color-surface-primary-default-rest: var(--lw-accent);
+  --dxds-color-surface-primary-default-hovered: var(--lw-accent-hover);
+  --dxds-color-border-primary-default-rest: var(--lw-accent);
+  --dxds-color-content-primary-default-rest: var(--lw-accent);
+  --dxds-color-surface-backdrop-default-rest: var(--lw-overlay);
+}
+
+body, .dxbl-text, .dxbl-btn, .dxbl-text-edit, .dxbl-popup, .dxbl-modal {
+  font-family: var(--lw-font);
+}
+
+/* Editors take the board's field look: 28px, 6px radius, accent on focus. */
+.lw-panel .dxbl-text-edit,
+.lw-slideover .dxbl-text-edit {
+  --dxbl-text-edit-border-radius: 6px;
+  border-radius: 6px;
+  background: var(--lw-input);
+  min-height: 28px;
+  font-size: var(--lw-size-body);
+}
+.lw-panel .dxbl-text-edit:focus-within,
+.lw-slideover .dxbl-text-edit:focus-within { border-color: var(--lw-accent); }
+
+/* Panel buttons: PrimaryButton / SecondaryButton of Controls.xaml. */
+.dxbl-btn.lw-primary {
+  background: var(--lw-accent); border-color: var(--lw-accent); color: #fff;
+  height: 34px; padding: 0 26px; border-radius: 6px; font-size: var(--lw-size-title);
+}
+.dxbl-btn.lw-primary:hover:not(:disabled) { background: var(--lw-accent-hover); border-color: var(--lw-accent-hover); }
+.dxbl-btn.lw-secondary {
+  background: var(--lw-card); border: 1px solid var(--lw-border-strong); color: var(--lw-text);
+  height: 34px; padding: 0 26px; border-radius: 6px; font-size: var(--lw-size-title);
+}
+.dxbl-btn.lw-secondary:hover:not(:disabled) { background: var(--lw-subtle); }
+.dxbl-btn.lw-danger { background: var(--lw-danger); border-color: var(--lw-danger); color: #fff; height: 34px; padding: 0 22px; border-radius: 6px; }
+
+/* Confirmation dialog: the legacy MessageBox text keeps its line breaks. */
+.lw-confirm .dxbl-modal-body, .lw-confirm .dxbl-popup-body { white-space: pre-line; }
+
+/* ------------------------------------------------------------------ shell */
+.lw-shell {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  font-size: var(--lw-size-body);
+  color: var(--lw-text);
+  background: var(--lw-window);
+}
+
+.lw-board {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  height: 100%;
+}
+
+/* An open panel holds the console: the whole window dims (scrim) and the board
+   is inert, which takes it out of the tab order and away from the mouse. Call
+   rows keep their colours so the monitors stay readable behind the panel. */
+.lw-scrim {
+  position: absolute; inset: 0;
+  background: var(--lw-overlay);
+  z-index: 900;
+}
+.lw-board[inert] .lw-tool,
+.lw-board[inert] .lw-qbtn,
+.lw-board[inert] .lw-toplink,
+.lw-board[inert] .lw-search { opacity: .55; }
+
+button { font-family: inherit; }
+.lw-muted { color: var(--lw-text-muted); }
+.lw-faint { color: var(--lw-text-faint); }
+.lw-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Focus is drawn, not hidden - this console is driven from the keyboard. */
+.lw-shell :focus-visible { outline: 2px solid var(--lw-accent); outline-offset: -2px; }
+
+/* ---------------------------------------------------------------- top bar */
+.lw-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 40px; padding: 0 8px 0 14px;
+  background: var(--lw-top-bar);
+  border-bottom: 1px solid var(--lw-border);
+}
+.lw-topbar-left, .lw-topbar-right { display: flex; align-items: center; min-width: 0; }
+.lw-agency-primary { font-weight: 700; letter-spacing: .2px; }
+.lw-agency-secondary { color: var(--lw-text-muted); margin-left: 5px; }
+.lw-topbar-meta { color: var(--lw-text-muted); margin-left: 20px; white-space: nowrap; }
+.lw-topbar-meta:first-of-type { margin-left: 26px; }
+
+.lw-toplink {
+  position: relative;
+  border: 0; background: transparent; color: var(--lw-text);
+  font-size: var(--lw-size-body); padding: 5px 9px; border-radius: 6px; cursor: pointer;
+}
+.lw-toplink:hover { background: var(--lw-subtle); }
+
+.lw-dot-badge {
+  position: absolute; top: -3px; right: -4px;
+  min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+  background: var(--lw-danger); color: #fff;
+  font-size: 9px; font-weight: 600; line-height: 14px; text-align: center;
+  pointer-events: none;
+}
+
+.lw-toptool {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 28px; min-width: 30px; padding: 0 7px; margin-left: 4px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--lw-icon); cursor: pointer;
+}
+.lw-toptool:hover { background: var(--lw-subtle); }
+.lw-toptool.boxed { background: var(--lw-subtle); padding: 0 14px; margin-left: 12px; }
+
+/* ---------------------------------------------------------------- content */
+.lw-content {
+  display: grid;
+  min-height: 0;
+  /* grid-template-columns is set inline: rail | calls | bar | units */
+}
+
+/* ------------------------------------------------------------- quick menu */
+.lw-rail {
+  display: flex; flex-direction: column; min-height: 0;
+  width: 176px;
+  background: var(--lw-rail);
+  border-right: 1px solid var(--lw-border);
+}
+.lw-rail.collapsed { width: 40px; align-items: center; }
+.lw-rail-head { display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0 4px 0 10px; color: var(--lw-text-muted); }
+.lw-rail.collapsed .lw-rail-head { padding: 6px 0 0 0; height: auto; }
+.lw-rail-search { position: relative; margin: 0 10px 8px; }
+.lw-search {
+  width: 100%; box-sizing: border-box; height: 26px; padding: 0 40px 0 9px;
+  border: 1px solid var(--lw-border); border-radius: 6px;
+  background: var(--lw-input); color: var(--lw-text); font: inherit; font-size: var(--lw-size-body);
+}
+.lw-search::placeholder { color: var(--lw-text-faint); }
+.lw-search:focus { outline: none; border-color: var(--lw-accent); }
+.lw-kbd {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  padding: 1px 4px; border-radius: 4px; background: var(--lw-subtle);
+  color: var(--lw-text-muted); font-size: 9px; pointer-events: none;
+}
+.lw-rail-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px 10px; margin-right: 4px; }
+
+.lw-qbtn {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  width: 100%; height: 24px; padding: 0 10px; margin: 0 0 4px; box-sizing: border-box;
+  border: 1px solid var(--lw-border); border-radius: 6px;
+  background: var(--lw-rail-item); color: var(--lw-text);
+  font-size: var(--lw-size-body); text-align: left; cursor: pointer;
+}
+.lw-qbtn:hover:not(:disabled) { background: var(--lw-rail-item-hover); }
+.lw-qbtn:disabled { opacity: .55; cursor: default; }
+.lw-qbtn .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-qbtn.stub .title { color: var(--lw-text-muted); }
+.lw-qbtn .hint { flex: none; color: var(--lw-text-muted); font-size: 9px; }
+
+/* ----------------------------------------------------------- tool buttons */
+.lw-tool {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px;
+  background: transparent; color: var(--lw-icon); cursor: pointer;
+}
+.lw-tool:hover { background: var(--lw-subtle); }
+.lw-tool.on { color: var(--lw-accent); }
+.lw-tool.boxed { width: auto; padding: 0 9px; background: var(--lw-table-header); border-radius: 6px; margin-right: 6px; }
+.lw-tool.boxed.on { background: var(--lw-accent-soft); }
+
+/* ---------------------------------------------------------- call monitors */
+.lw-calls {
+  display: grid;
+  min-height: 0; min-width: 0;
+  padding: 8px 1px 8px 8px;
+  /* grid-template-rows is set inline from the monitors' RowHeight */
+}
+
+.lw-monitor {
+  display: flex; flex-direction: column;
+  min-height: 0; min-width: 0; overflow: hidden;
+  background: var(--lw-card);
+  border: 1px solid var(--lw-border); border-radius: 8px;
+  box-shadow: var(--lw-shadow-card);
+}
+.lw-monitor.fitted, .lw-monitor.collapsed { align-self: start; }
+
+.lw-mon-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex: none; height: 34px; padding: 0 8px 0 12px;
+}
+.lw-mon-title { display: flex; align-items: center; gap: 0; min-width: 0; color: var(--lw-icon); }
+.lw-mon-title h2 { margin: 0 0 0 9px; font-size: var(--lw-size-title); font-weight: 600; color: var(--lw-text); white-space: nowrap; }
+.lw-mon-tools { display: flex; align-items: center; gap: 2px; position: relative; }
+
+.lw-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 5px; margin-left: 8px; box-sizing: border-box;
+  border-radius: 9px; background: var(--lw-success); color: var(--lw-text-on-accent);
+  font-size: 10px; font-weight: 600;
+}
+.lw-count.alert { background: var(--lw-danger); }
+.lw-count.zero { background: var(--lw-agency-other); }
+
+/* ------------------------------------------------------- monitor grids
+   The four monitors are DevExpress DxGrids (Gridlines.All draws the column
+   separators in the header and the rows). The wrapper is the focusable list the
+   console's cursor keys work on; the grid fills it, or - for a fitted monitor -
+   grows with its rows up to the cap and then scrolls. */
+.lw-gridwrap {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--lw-divider);
+}
+.lw-gridwrap.fitted { flex: none; }
+.lw-gridwrap:focus { outline: none; }
+.lw-gridwrap:focus-visible { box-shadow: inset 0 0 0 2px var(--lw-accent-soft); }
+.lw-gridwrap > .lw-grid { flex: 1 1 auto; min-height: 0; height: 100%; }
+.lw-gridwrap.fitted > .lw-grid { height: auto; max-height: inherit; }
+
+.dxbl-grid.lw-grid {
+  border: 0 !important; border-radius: 0 !important;
+  background: var(--lw-card); color: var(--lw-text);
+  font-size: var(--lw-size-body);
+}
+.lw-grid .dxbl-grid-table > thead > tr > th {
+  background: var(--lw-table-header) !important; color: var(--lw-text-muted);
+  font-size: var(--lw-size-caption); font-weight: 400;
+  height: 24px; padding-top: 0 !important; padding-bottom: 0 !important;
+}
+.lw-grid .dxbl-grid-table > tbody > tr > td {
+  height: var(--lw-row-height); padding-top: 0 !important; padding-bottom: 0 !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lw-grid .dxbl-grid-table > thead > tr > th,
+.lw-grid .dxbl-grid-table > tbody > tr > td { border-color: var(--lw-border) !important; }
+/* The highlight is the call (or unit): the monitor marks its row lw-sel. */
+.lw-grid .dxbl-grid-table > tbody > tr.lw-sel > td,
+.lw-grid .dxbl-grid-table > tbody > tr.dxbl-grid-selected-row > td { background: var(--lw-row-selected) !important; color: var(--lw-text); }
+.lw-grid .dxbl-grid-table > tbody > tr.lw-sel > td:first-child { box-shadow: inset 3px 0 0 var(--lw-accent); }
+.lw-grid .dxbl-grid-table > tbody > tr.lw-cursor > td { box-shadow: inset 0 1px 0 var(--lw-accent-soft), inset 0 -1px 0 var(--lw-accent-soft); }
+.lw-grid .dxbl-grid-table > tbody > tr:hover:not(.lw-sel) > td { background: var(--lw-row-hover); }
+.lw-grid td.dxbl-grid-detail-cell { padding: 0 !important; height: auto !important; white-space: normal; }
+.lw-row-tool { width: 20px; height: 20px; }
+.lw-flag { display: inline-flex; align-items: center; gap: 3px; }
+.lw-flag .lw-icon { color: var(--lw-warning); display: block; }
+
+.lw-chevron { color: var(--lw-icon); transition: transform .1s; }
+
+.lw-ag {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 17px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 4px; color: #fff; font-size: 9.5px; font-weight: 600; vertical-align: middle;
+}
+.lw-ag.unit { min-width: 24px; }
+.lw-ag-PD { background: var(--lw-agency-police); }
+.lw-ag-FD { background: var(--lw-agency-fire); }
+.lw-ag-EMS { background: var(--lw-agency-ems); }
+.lw-ag-OTH, .lw-ag-SPT { background: var(--lw-agency-other); }
+.lw-unit-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lw-pending-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--lw-warning); flex: none; }
+
+.lw-detail {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 12px; padding: 10px 14px 12px 34px;
+  background: var(--lw-row-expanded);
+}
+.lw-detail > div { margin-bottom: 10px; min-width: 0; }
+.lw-detail .span2 { grid-column: span 2; }
+.lw-detail .span4 { grid-column: span 4; margin-bottom: 0; }
+.lw-label { display: block; color: var(--lw-text-muted); font-size: var(--lw-size-caption); margin-bottom: 4px; }
+.lw-value { font-weight: 600; overflow-wrap: anywhere; }
+.lw-unit-chip { display: inline-block; margin: 0 5px 2px 0; padding: 1px 6px; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 600; }
+
+/* ------------------------------------------------------------- grab bars */
+.lw-hsplit, .lw-vsplit {
+  position: relative; z-index: 2;
+  background: transparent;
+  touch-action: none;
+}
+.lw-hsplit { cursor: row-resize; }
+.lw-vsplit { cursor: col-resize; margin: 8px 0; }
+.lw-hsplit::after, .lw-vsplit::after {
+  content: ""; position: absolute; border-radius: 2px; background: transparent; transition: background .12s;
+}
+.lw-hsplit::after { left: 30%; right: 30%; top: 3px; height: 2px; }
+.lw-vsplit::after { top: 30%; bottom: 30%; left: 2px; width: 2px; }
+.lw-hsplit:hover::after, .lw-vsplit:hover::after,
+.lw-hsplit.dragging::after, .lw-vsplit.dragging::after { background: var(--lw-border-strong); }
+.lw-hsplit:focus-visible::after, .lw-vsplit:focus-visible::after { background: var(--lw-accent); }
+.lw-hsplit:focus, .lw-vsplit:focus { outline: none; }
+
+/* ----------------------------------------------------------- unit monitor */
+.lw-units { display: flex; min-height: 0; min-width: 0; padding: 8px 8px 8px 1px; }
+.lw-units > .lw-monitor { flex: 1; }
+
+.lw-segment { display: inline-flex; padding: 2px; margin-left: 14px; border-radius: 7px; background: var(--lw-segment-track); }
+.lw-segment button {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--lw-text-muted); font-size: var(--lw-size-body); cursor: pointer;
+}
+.lw-segment button:hover { color: var(--lw-text); }
+.lw-segment button.on { background: var(--lw-segment-selected); color: var(--lw-text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.lw-pill { min-width: 18px; padding: 1px 5px; box-sizing: border-box; border-radius: 7px; background: var(--lw-subtle); color: var(--lw-text-muted); font-size: 10px; font-weight: 400; text-align: center; }
+
+/* ------------------------------------------------------- column chooser */
+.lw-chooser { min-width: 170px; padding: 4px 0; }
+.lw-chooser-title { margin: 6px 10px 2px; color: var(--lw-text-muted); font-size: var(--lw-size-caption); }
+.lw-chooser-item { padding: 3px 10px; }
+.lw-chooser-reset {
+  display: block; width: 100%; margin-top: 4px; padding: 6px 10px;
+  border: 0; border-top: 1px solid var(--lw-divider); background: transparent;
+  color: var(--lw-text); text-align: left; font-size: var(--lw-size-body); cursor: pointer;
+}
+.lw-chooser-reset:hover { background: var(--lw-subtle); }
+
+/* ---------------------------------------------- standard functions bar */
+.lw-fbar { padding: 0 6px 0 10px; background: var(--lw-rail); border-top: 1px solid var(--lw-border); }
+.lw-fbar-head { display: flex; align-items: center; justify-content: space-between; height: 28px; color: var(--lw-text-muted); }
+.lw-fbar-source { margin-left: 12px; font-size: 10px; opacity: .8; }
+.lw-fbar-grid { display: grid; grid-template-columns: 40px repeat(9, minmax(0, 1fr)); column-gap: 4px; row-gap: 4px; padding-bottom: 6px; padding-right: 4px; }
+.lw-fbar-grid .bank { color: var(--lw-text-muted); font-size: 10px; align-self: center; }
+.lw-fbar-grid .lw-qbtn { height: 26px; margin: 0; padding: 0 8px; }
+.lw-fbar-grid .lw-qbtn.blank { visibility: visible; }
+
+/* ------------------------------------------------------------- status bar */
+.lw-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: 24px; padding: 0 8px 0 14px;
+  background: var(--lw-top-bar); border-top: 1px solid var(--lw-border);
+  color: var(--lw-text-muted); font-size: var(--lw-size-caption);
+}
+.lw-status-text { white-space: pre; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lw-status-right { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+/* ------------------------------------------------------------- row menu */
+.lw-rowmenu .dxbl-menu-item { font-size: var(--lw-size-body); }
+.lw-rowmenu .stub { color: var(--lw-text-muted); }
+
+/* =================================================================== panels
+   The cards opened over the dimmed board (the WPF function panels). Shared by
+   every panel component: header, body, footer, labels, sections, messages. */
+.lw-panel {
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 96px);
+  background: var(--lw-card); color: var(--lw-text);
+  font-size: var(--lw-size-body);
+}
+.lw-panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 10px 12px 10px 18px;
+  background: var(--lw-table-header);
+  border-bottom: 1px solid var(--lw-border);
+}
+.lw-panel-title { margin: 0; font-size: var(--lw-size-title); font-weight: 600; }
+.lw-panel-subtitle { margin-top: 2px; color: var(--lw-text-muted); }
+.lw-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 18px; }
+.lw-panel-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 12px 18px; border-top: 1px solid var(--lw-border);
+}
+.lw-panel-footer .spacer { flex: 1; }
+
+.lw-field-label { display: block; margin: 0 0 4px; color: var(--lw-text-muted); font-size: var(--lw-size-caption); }
+.lw-section { padding: 12px 0; border-bottom: 1px solid var(--lw-divider); }
+.lw-section:last-child { border-bottom: 0; }
+.lw-section-title { margin: 0 0 8px; color: var(--lw-text-muted); font-size: var(--lw-size-caption); font-weight: 600; text-transform: none; }
+.lw-grid { display: grid; gap: 10px 12px; }
+.lw-validation { margin: 8px 0 0; padding: 7px 10px; border-radius: 6px; background: var(--lw-danger-soft); color: var(--lw-danger); }
+.lw-notice { margin: 8px 0 0; padding: 7px 10px; border-radius: 6px; background: var(--lw-warning-soft); color: var(--lw-warning); }
+.lw-ok { color: var(--lw-success); }
+.lw-warn { color: var(--lw-warning); }
+.lw-danger-text { color: var(--lw-danger); }
+
+.lw-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 9px; margin: 0 6px 6px 0;
+  border: 1px solid var(--lw-border); border-radius: 11px;
+  background: var(--lw-subtle); color: var(--lw-text); font-size: var(--lw-size-caption); cursor: pointer;
+}
+.lw-chip.on { background: var(--lw-accent-soft); border-color: var(--lw-accent); color: var(--lw-accent); }
+.lw-chip.alert { background: var(--lw-danger-soft); border-color: var(--lw-danger); color: var(--lw-danger); }
+.lw-chip:disabled { opacity: .5; cursor: default; }
+
+.lw-prio { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 4px; font-size: var(--lw-size-caption); font-weight: 600; color: #fff; }
+.lw-prio.high { background: var(--lw-danger); }
+.lw-prio.medium { background: var(--lw-warning); }
+.lw-prio.low { background: var(--lw-success); }
+
+/* DxPopup frame for the panels: the card is the panel, so the popup draws nothing of its own. */
+.lw-popup.dxbl-popup, .lw-popup .dxbl-popup-content, .lw-popup .dxbl-modal-content {
+  border-radius: 10px; overflow: hidden;
+  background: var(--lw-card);
+  border: 1px solid var(--lw-border);
+  box-shadow: var(--lw-shadow-panel);
+}
+.dxbl-popup.lw-popup .dxbl-popup-body, .dxbl-popup.lw-popup .dxbl-modal-body { padding: 0 !important; }
+
+/* ------------------------------------------------- slide-over (Take Call) */
+.lw-slideover {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  z-index: 950;
+  display: flex; flex-direction: column;
+  background: var(--lw-card); color: var(--lw-text);
+  border-left: 1px solid var(--lw-border);
+  box-shadow: var(--lw-shadow-panel);
+}
+.lw-slideover[inert] { filter: brightness(.85); }
+
+/* A second scrim, over Take Call / Self Initiate, while a panel is open above them. */
+.lw-scrim.over-slideover { z-index: 1000; }
+.lw-popup-top.dxbl-popup { margin-top: 64px; }
+
+/* ------------------------------------------------------ function stub */
+.lw-stub-banner { display: flex; align-items: center; gap: 7px; padding: 8px 18px; background: var(--lw-warning-soft); color: var(--lw-text); }
+.lw-stub-banner .lw-icon { color: var(--lw-warning); flex: none; }
+.lw-stub-context { padding: 8px 18px; background: var(--lw-subtle); border-bottom: 1px solid var(--lw-border); }
+.lw-stub-context.missing { background: var(--lw-danger-soft); }
+.lw-stub-body { max-height: 520px; }
+.lw-stub-facts { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 0 12px; margin: 0; }
+.lw-stub-facts dt { color: var(--lw-text-muted); margin-bottom: 6px; }
+.lw-stub-facts dd { margin: 0 0 6px; overflow-wrap: anywhere; }
+.lw-stub-facts dd.strong { font-weight: 600; }
+.lw-stub-facts dd.mono, .lw-mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }
+.lw-stub-heading { margin: 10px 0 4px; color: var(--lw-text-muted); font-size: var(--lw-size-caption); font-weight: 400; }
+.lw-stub-text { margin: 0 0 6px; overflow-wrap: anywhere; }
+.lw-stub-list { margin: 0 0 6px; padding-left: 16px; }
+.lw-stub-list li { margin-bottom: 4px; }
+.dxbl-btn.lw-stub-close { width: 120px; }
+
+
+/* DxGrid's context-menu host sits after the table; out of the flow it can never
+   take the empty area under a short monitor (where a click reached it). */
+.lw-grid > dxbl-context-menu { position: absolute; width: 0; height: 0; overflow: visible; }
+/* DxGrid's own focused-cell frame: the console's cursor is the highlighted row, so
+   the grid's cell focus is not drawn (the list wrapper shows focus instead). */
+.lw-grid td:focus, .lw-grid th:focus, .lw-grid td:focus-visible, .lw-grid th:focus-visible { outline: none !important; box-shadow: none; }
+.lw-grid .dxbl-grid-focused-cell, .lw-grid [data-dxbl-focused] { outline: none !important; }
+.lw-gridwrap:focus-within { box-shadow: inset 0 0 0 1px var(--lw-accent-soft); }
+
+/* The board never grows wider than the window. Without this the board's single grid
+   track sized itself to the grids' full column widths (DxGrid, ColumnsContainer resize),
+   pushing the Unit Monitor and the top bar off screen on narrower windows; the grids
+   scroll sideways inside their monitors instead. */
+.lw-board { grid-template-columns: minmax(0, 1fr); }
+.lw-board > * { min-width: 0; }
+/* The pinned chevron and "..." cells hold only a 20px button. The grid's cell rule
+   (nowrap + overflow hidden + text-overflow: ellipsis) painted a stray "." whenever the
+   button plus the cell padding was wider than the 30/32px column, so these cells
+   clip instead and lose their side padding. */
+.lw-grid .dxbl-grid-table > tbody > tr > td:has(> .lw-row-tool) {
+  text-overflow: clip; padding-left: 0 !important; padding-right: 0 !important; text-align: center;
+}

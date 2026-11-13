@@ -1,0 +1,88 @@
+@* A function not built in this console yet - Views\FunctionStubPanel.xaml: the
+   key, the legacy program, what it needs from the board and whether the board
+   has it, and the notes taken from the legacy source. Read-only. *@
+
+<PanelPopup Name="functionstub" Visible="Vm.IsOpen" Width="600px" AnchorTop="true" Label="@Vm.Title">
+    <div class="lw-panel-header">
+        <div>
+            <h3 class="lw-panel-title">@Vm.Title</h3>
+            @if (Vm.HasSubtitle)
+            {
+                <div class="lw-panel-subtitle">@Vm.Subtitle</div>
+            }
+        </div>
+        <button class="lw-tool" title="Close" aria-label="Close" @onclick="() => Vm.CloseCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.Close" />
+        </button>
+    </div>
+
+    <div class="lw-stub-banner">
+        <LwIcon Data="@LwIcons.Warning" Size="13" />
+        <span>Not built in this console yet. Nothing is read or written - these are the notes for building it.</span>
+    </div>
+
+    <div class="lw-stub-context @(Vm.HasContext ? null : "missing")">@Vm.ContextText</div>
+
+    <div class="lw-panel-body lw-stub-body">
+        <dl class="lw-stub-facts">
+            <dt>Legacy</dt>
+            <dd class="strong">@Vm.Legacy</dd>
+            @if (Vm.HasSource)
+            {
+                <dt>Source</dt>
+                <dd class="mono">@Vm.Source</dd>
+            }
+            @if (Vm.HasKeySource)
+            {
+                <dt>Key</dt>
+                <dd class="mono">@Vm.KeySource</dd>
+            }
+            <dt>Purpose</dt>
+            <dd>@Vm.Purpose</dd>
+        </dl>
+
+        @if (Vm.HasInvocation)
+        {
+            <h4 class="lw-stub-heading">How the legacy runs it</h4>
+            <p class="lw-stub-text">@Vm.Invocation</p>
+        }
+        @if (Vm.HasReads)
+        {
+            <h4 class="lw-stub-heading">Reads</h4>
+            <p class="lw-stub-text">@Vm.Reads</p>
+        }
+        @if (Vm.HasWrites)
+        {
+            <h4 class="lw-stub-heading">Writes</h4>
+            <p class="lw-stub-text">@Vm.Writes</p>
+        }
+        @Bullets("Rules to keep", Vm.Rules)
+        @Bullets("Quirks and findings", Vm.Notes)
+        @Bullets("To build it here", Vm.ToBuild)
+    </div>
+
+    <div class="lw-panel-footer">
+        @* The stub takes the cursor on Close, as FunctionStubView.FocusClose did. *@
+        <span data-lw-autofocus style="display:contents">
+            <DxButton Text="Close" CssClass="lw-secondary lw-stub-close" RenderStyle="ButtonRenderStyle.None"
+                      Click="() => Vm.CloseCommand.Execute(null)" />
+        </span>
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public FunctionStubViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    private static RenderFragment Bullets(string heading, IReadOnlyList<string> lines) => __builder =>
+    {
+        if (lines.Count == 0) return;
+        <h4 class="lw-stub-heading">@heading</h4>
+        <ul class="lw-stub-list">
+            @foreach (var line in lines)
+            {
+                <li>@line</li>
+            }
+        </ul>
+    };
+}

@@ -1,0 +1,323 @@
+@* Take Call - Views\TakeCallPanel.xaml (LwCad101). A slide-over at the right of
+   the window that dims the board (the shell's scrim), and collapses to the
+   narrow rail of CAD_Dashboard_CollapsedTakeCallFunction.png, which is not
+   modal: parking a call on the rail is how the operator gets back to the board.
+   Inert while a panel (the location picker, CAD Alerts, Assign) is open over it. *@
+@implements IDisposable
+
+@if (Vm.IsOpen && Vm.IsCollapsed)
+{
+    <aside id="lw-panel-takecall" class="lw-slideover lw-tc-rail" inert="@Shell.IsPanelOverTakeCall" aria-label="Take Call (parked)">
+        <button class="lw-tool" title="Expand Take Call" aria-label="Expand Take Call" @onclick="() => Vm.ExpandCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.ChevronsLeft" />
+        </button>
+        <button class="lw-tool lw-tc-rail-more" title="Take Call options" aria-label="Take Call options" @onclick="() => Vm.MoreCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+        </button>
+        <div class="lw-tc-rail-timer">@Vm.Elapsed</div>
+        <div class="lw-tc-rail-label">Code</div>
+        <div class="lw-tc-rail-code">@(Vm.CallCode?.Code ?? "------")</div>
+        <div class="lw-tc-rail-prio @PrioClass">@Vm.PriorityText</div>
+        <div class="lw-tc-rail-spacer"></div>
+        <button class="lw-tool" title="Cancel the call" aria-label="Cancel the call" @onclick="() => Vm.CancelCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.Close" />
+        </button>
+    </aside>
+}
+else if (Vm.IsOpen)
+{
+    <aside id="lw-panel-takecall" class="lw-slideover lw-tc" inert="@Shell.IsPanelOverTakeCall"
+           role="dialog" aria-modal="true" aria-label="Take Call" @onkeydown="OnPanelKeyDown">
+
+        @* ============================================= header *@
+        <header class="lw-tc-head">
+            <div class="lw-tc-head-left">
+                <span class="lw-panel-title">Event No.</span>
+                <span class="lw-muted lw-tc-eventno">@Vm.EventNoSuffix</span>
+                <button class="lw-tool" title="Copy the event number" aria-label="Copy the event number"
+                        @onclick="() => Vm.CopyEventNoCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.Copy" Size="12" />
+                </button>
+            </div>
+            <div class="lw-tc-head-right">
+                <span class="lw-tc-timer" title="Elapsed since the call was opened">@Vm.Elapsed</span>
+                <button class="lw-tool" title="Take Call options" aria-label="Take Call options" @onclick="() => Vm.MoreCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+                </button>
+                <button class="lw-tool" title="Park the call on the rail" aria-label="Park the call on the rail"
+                        @onclick="() => Vm.ToggleCollapseCommand.Execute(null)">
+                    <LwIcon Data="@LwIcons.ChevronsRight" />
+                </button>
+            </div>
+        </header>
+
+        @if (Vm.HasValidationMessage)
+        {
+            <div class="lw-tc-banner" role="alert">
+                <LwIcon Data="@LwIcons.Warning" Size="13" />
+                <span>@Vm.ValidationMessage</span>
+            </div>
+        }
+
+        @* ============================================= body *@
+        <div class="lw-tc-body">
+
+            @* Call code and the four agency priorities. *@
+            <div class="lw-tc-row lw-tc-callcode">
+                <div class="lw-tc-field" @onfocusin='() => Focused("callcode")' @onfocusout='() => Blurred("callcode")'>
+                    <label class="lw-field-label">Call Code</label>
+                    <DxComboBox TData="CallCodeItem" TValue="CallCodeItem" @ref="_callCodeBox"
+                                Data="Vm.CallCodes" Value="Vm.CallCode" ValueChanged="@((CallCodeItem v) => Vm.CallCode = v)"
+                                TextFieldName="@nameof(CallCodeItem.Display)" NullText="Call Code"
+                                SearchMode="ListSearchMode.AutoSearch" SearchFilterCondition="ListSearchFilterCondition.Contains"
+                                DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+                <div class="lw-tc-field">
+                    <label class="lw-field-label">Priority  P / F / E / O</label>
+                    <div class="lw-tc-prios">
+                        @PriorityBox("P", "Police priority", Vm.PriorityPolice, v => Vm.PriorityPolice = v, Vm.AllowPolicePriority)
+                        @PriorityBox("F", "Fire priority", Vm.PriorityFire, v => Vm.PriorityFire = v, Vm.AllowFirePriority)
+                        @PriorityBox("E", "EMS priority", Vm.PriorityEms, v => Vm.PriorityEms = v, Vm.AllowEmsPriority)
+                        @PriorityBox("O", "Other / support priority", Vm.PriorityOther, v => Vm.PriorityOther = v, Vm.AllowOtherPriority)
+                        <span class="lw-prio @PrioClass" title="The band of the lowest priority entered">@Vm.PriorityText</span>
+                    </div>
+                </div>
+            </div>
+
+            @* Jurisdiction, the area codes, Force. *@
+            <div class="lw-tc-row lw-tc-areas">
+                <div class="lw-tc-field" @onfocusin='() => Focused("jur")' @onfocusout='() => Blurred("jur")'>
+                    <label class="lw-field-label">Jurisdiction</label>
+                    <DxComboBox TData="string" TValue="string" @ref="_jurBox" Data="Vm.JurisdictionCodes" Value="Vm.Jurisdiction"
+                                ValueChanged="@((string v) => Vm.Jurisdiction = v ?? string.Empty)" NullText="Jur"
+                                DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+                @TextField("police", "Police", Vm.PoliceCode, v => Vm.PoliceCode = v, "Code")
+                @TextField("fire", "Fire", Vm.FireCode, v => Vm.FireCode = v, "Code")
+                @TextField("ems", "EMS", Vm.EmsCode, v => Vm.EmsCode = v, "Code")
+                @TextField("support", "Support", Vm.SupportCode, v => Vm.SupportCode = v, "Code")
+                @TextField("tow", "TOW", Vm.TowCode, v => Vm.TowCode = v, "Code")
+                <div class="lw-tc-field" @onfocusin='() => Focused("force")' @onfocusout='() => Blurred("force")'>
+                    <label class="lw-field-label">FORCE</label>
+                    <DxComboBox TData="string" TValue="string" @ref="_forceBox" Data="Vm.ForceFlags" Value="Vm.Force"
+                                ValueChanged="@((string v) => Vm.Force = v ?? "N")"
+                                DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+            </div>
+
+            @* Location (LaGeo040 on leaving the field) and the premise. *@
+            <div class="lw-tc-row lw-tc-two">
+                <div class="lw-tc-field" data-lw-autofocus data-lw-refocus
+                     @onfocusin='() => Focused("location")' @onfocusout="OnLocationBlur">
+                    <label class="lw-field-label">
+                        Location
+                        @if (Vm.IsLocationValidated)
+                        {
+                            <span class="lw-tc-validated" title="Location validated">
+                                <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M 4,12 L 9,17 L 20,6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            </span>
+                        }
+                    </label>
+                    <DxTextBox Text="@Vm.Location" TextChanged="@(v => Vm.Location = Upper(v, 50))" BindValueMode="BindValueMode.OnInput"
+                               NullText="Address, ST / XST, P/  A/  B/  C/" CssClass="lw-tc-edit lw-tc-upper" />
+                </div>
+                <div class="lw-tc-field">
+                    <label class="lw-field-label">Premise</label>
+                    <div class="lw-tc-premise">
+                        <DxTextBox Text="@Vm.Premise" ReadOnly="true" NullText="From the location"
+                                   CssClass="@("lw-tc-edit" + (Vm.PremiseHazard ? " hazard" : Vm.CanListPremises ? " listable" : string.Empty))" />
+                        <span class="lw-tc-premise-tools">
+                            @if (Vm.CanListPremises)
+                            {
+                                <button class="lw-tool" title="List the premises at this location" aria-label="List the premises at this location"
+                                        @onclick="() => Vm.ListPremisesCommand.Execute(null)">
+                                    <LwIcon Data="@LwIcons.Columns" Size="12" />
+                                </button>
+                            }
+                            @if (Vm.CanClearPremise)
+                            {
+                                <button class="lw-tool" title="Detach the premise" aria-label="Detach the premise"
+                                        @onclick="() => Vm.ClearPremiseCommand.Execute(null)">
+                                    <LwIcon Data="@LwIcons.Close" Size="10" />
+                                </button>
+                            }
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            @* The legacy toolbar indicators. *@
+            <div class="lw-tc-chips">
+                <button class="lw-chip" disabled="@(!Vm.IsLocationValidated)" title="The geocoded location (LaGeo001)"
+                        @onclick="() => Vm.ShowLocationCommand.Execute(null)">Location</button>
+                <button class="lw-chip @(Vm.PremiseHazard ? "alert" : null)" disabled="@(!Vm.HasPremise)"
+                        title="The premise record - red when it has hazards on file"
+                        @onclick="() => Vm.ShowPremiseCommand.Execute(null)">Premise</button>
+                <button class="lw-chip" disabled="@(!Vm.HasHistory)" title="Earlier calls at this location (LwCad030)"
+                        @onclick="() => Vm.ShowHistoryCommand.Execute(null)">History @Vm.HistoryCount</button>
+                <button class="lw-chip @(Vm.PatrolExact ? "alert" : Vm.HasPatrolHit ? "lw-tc-warn" : null)" disabled="@(!Vm.HasPatrolHit)"
+                        title="Patrol file hits on the location, the caller or the vehicle"
+                        @onclick="() => Vm.ShowPatrolCommand.Execute(null)">Patrol</button>
+                <button class="lw-chip" disabled="@(!Vm.HasSop)" title="The call code's SOPs (CCC2)"
+                        @onclick="() => Vm.ShowSopCommand.Execute(null)">SOP</button>
+                <button class="lw-chip @(Vm.HasDuplicates ? "lw-tc-warn" : null)" disabled="@(!Vm.HasDuplicates)"
+                        title="Calls on the stack at or near this location (LwCad190)"
+                        @onclick="() => Vm.ShowDuplicatesCommand.Execute(null)">Duplicate @Vm.DuplicateCount</button>
+                @if (Vm.HasE911Waiting)
+                {
+                    <button class="lw-chip lw-tc-e911" title="An E911 call is waiting at this position - F11 loads it"
+                            @onclick="() => Vm.LoadE911Command.Execute(null)">@Vm.E911Text</button>
+                }
+            </div>
+
+            @if (Vm.HasNotice)
+            {
+                <div class="lw-notice lw-tc-notice">@Vm.Notice</div>
+            }
+
+            @if (Vm.IsInfoOpen)
+            {
+                <div class="lw-tc-info">
+                    <div class="lw-tc-info-head">
+                        <span class="lw-field-label">@Vm.InfoTitle</span>
+                        <button class="lw-tool" title="Close the list" aria-label="Close the list" @onclick="() => Vm.CloseInfoCommand.Execute(null)">
+                            <LwIcon Data="@LwIcons.Close" Size="10" />
+                        </button>
+                    </div>
+                    @foreach (var line in Vm.InfoLines)
+                    {
+                        <div class="lw-tc-info-line">
+                            <div class="lw-tc-info-heading">@line.Heading</div>
+                            @if (line.HasText)
+                            {
+                                <div class="lw-muted">@line.Text</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Origin, Other, Disposition. *@
+            <div class="lw-tc-row lw-tc-two">
+                <div class="lw-tc-field" @onfocusin='() => Focused("origin")' @onfocusout='() => Blurred("origin")'>
+                    <label class="lw-field-label">Origin</label>
+                    <DxComboBox TData="LookupItem" TValue="LookupItem" @ref="_originBox" Data="Vm.Origins" Value="Vm.Origin"
+                                ValueChanged="@((LookupItem v) => Vm.Origin = v)" TextFieldName="@nameof(LookupItem.Display)" NullText="Origin"
+                                SearchMode="ListSearchMode.AutoSearch" SearchFilterCondition="ListSearchFilterCondition.Contains"
+                                DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+                @TextField("other", "Other", Vm.OtherComment, v => Vm.OtherComment = Limit(v, 36), "Enter comment...")
+            </div>
+
+            <div class="lw-tc-row">
+                <div class="lw-tc-field" @onfocusin='() => Focused("disposition")' @onfocusout='() => Blurred("disposition")'>
+                    <label class="lw-field-label">Disposition  (completes the call on entry)</label>
+                    <DxComboBox TData="LookupItem" TValue="LookupItem" @ref="_dispositionBox" Data="Vm.Dispositions" Value="Vm.Disposition"
+                                ValueChanged="@((LookupItem v) => Vm.Disposition = v)" TextFieldName="@nameof(LookupItem.Display)"
+                                NullText="None - the call goes to the stack" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                SearchMode="ListSearchMode.AutoSearch" SearchFilterCondition="ListSearchFilterCondition.Contains"
+                                DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+            </div>
+
+            <hr class="lw-tc-sep" />
+
+            @* Reporting person. *@
+            <div class="lw-tc-row lw-tc-person">
+                @TextField("last", "Last Name", Vm.LastName, v => Vm.LastName = Upper(v), null, upper: true)
+                @TextField("first", "First Name", Vm.FirstName, v => Vm.FirstName = Upper(v), null, upper: true)
+                @TextField("middle", "MI", Vm.MiddleName, v => Vm.MiddleName = Upper(v), null, upper: true)
+                @TextField("phone", "Phone Number", Vm.PhoneNumber, v => Vm.PhoneNumber = v, null)
+            </div>
+
+            <div class="lw-tc-row lw-tc-address">
+                <div class="lw-tc-field" @onfocusin='() => Focused("address")' @onfocusout="OnAddressBlur">
+                    <label class="lw-field-label">Reporting Person Address</label>
+                    <DxTextBox Text="@Vm.Address" TextChanged="@(v => Vm.Address = Upper(v))" BindValueMode="BindValueMode.OnInput"
+                               NullText="Address - SAME copies the location" CssClass="lw-tc-edit lw-tc-upper" />
+                </div>
+                @TextField("city", "City", Vm.City, v => Vm.City = v, null)
+                <div class="lw-tc-field" @onfocusin='() => Focused("state")' @onfocusout='() => Blurred("state")'>
+                    <label class="lw-field-label">State</label>
+                    <DxComboBox TData="string" TValue="string" @ref="_stateBox" Data="Vm.States" Value="Vm.State"
+                                ValueChanged="@((string v) => Vm.State = v ?? string.Empty)"
+                                SearchMode="ListSearchMode.AutoSearch" DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                </div>
+            </div>
+
+            <button class="lw-tc-addvehicle" @onclick="() => Vm.ToggleVehicleCommand.Execute(null)" aria-expanded="@(Vm.ShowVehicle ? "true" : "false")">
+                <LwIcon Data="@LwIcons.PlusSquare" Size="14" CssClass="lw-tc-accent" />
+                <span>Add Vehicle Info</span>
+            </button>
+
+            @if (Vm.ShowVehicle)
+            {
+                <div class="lw-tc-vehicle">
+                    <div class="lw-tc-row lw-tc-plate">
+                        @TextField("plate", "Plate", Vm.Vehicle.Plate, v => { Vm.Vehicle.Plate = Upper(v); }, null, upper: true)
+                        <div class="lw-tc-field" @onfocusin='() => Focused("platestate")' @onfocusout='() => Blurred("platestate")'>
+                            <label class="lw-field-label">St</label>
+                            <DxComboBox TData="string" TValue="string" Data="Vm.States" Value="Vm.Vehicle.PlateState"
+                                        ValueChanged="@((string v) => Vm.Vehicle.PlateState = v ?? string.Empty)"
+                                        SearchMode="ListSearchMode.AutoSearch" DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                        </div>
+                        <div class="lw-tc-field" @onfocusin='() => Focused("platetype")' @onfocusout='() => Blurred("platetype")'>
+                            <label class="lw-field-label">Type</label>
+                            <DxComboBox TData="string" TValue="string" Data="Vm.PlateTypes" Value="Vm.Vehicle.PlateType"
+                                        ValueChanged="@((string v) => Vm.Vehicle.PlateType = v ?? string.Empty)"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                        DropDownVisibleChanged="v => _dropOpen = v" CssClass="lw-tc-edit" />
+                        </div>
+                        @TextField("year", "Year", Vm.Vehicle.Year, v => { Vm.Vehicle.Year = v; }, null)
+                    </div>
+                    <div class="lw-tc-row lw-tc-four">
+                        @TextField("make", "Make", Vm.Vehicle.Make, v => { Vm.Vehicle.Make = Upper(v); }, null, upper: true)
+                        @TextField("model", "Model", Vm.Vehicle.Model, v => { Vm.Vehicle.Model = Upper(v); }, null, upper: true)
+                        @TextField("style", "Style", Vm.Vehicle.Style, v => { Vm.Vehicle.Style = Upper(v); }, null, upper: true)
+                        @TextField("color", "Color", Vm.Vehicle.Color, v => { Vm.Vehicle.Color = Upper(v); }, null, upper: true)
+                    </div>
+                </div>
+            }
+
+            <div class="lw-tc-row">
+                <div class="lw-tc-field" @onfocusin='() => Focused("narrative")' @onfocusout='() => Blurred("narrative")'>
+                    <label class="lw-field-label">Narrative</label>
+                    <DxMemo Text="@Vm.Narrative" TextChanged="@(v => Vm.Narrative = v ?? string.Empty)" BindValueMode="BindValueMode.OnInput"
+                            NullText="Enter additional details..." Rows="3" ResizeMode="MemoResizeMode.Vertical" CssClass="lw-tc-edit" />
+                </div>
+            </div>
+
+            @* Call information. *@
+            <div class="lw-tc-callinfo">
+                <button class="lw-tc-callinfo-toggle" aria-expanded="@(Vm.IsCallInfoExpanded ? "true" : "false")"
+                        @onclick="() => Vm.ToggleCallInfoCommand.Execute(null)">
+                    <span>Call information</span>
+                    <LwIcon Data="@LwIcons.ChevronDown" Size="13" Rotate="@(Vm.IsCallInfoExpanded ? 180 : 0)" />
+                </button>
+                @if (Vm.IsCallInfoExpanded)
+                {
+                    <div class="lw-tc-callinfo-grid">
+                        <div><span class="lw-label">Event No.</span><span class="lw-value">@Vm.EventNo</span></div>
+                        <div><span class="lw-label">Call Code</span><span class="lw-value">@Vm.CallCodeDisplay</span></div>
+                        <div>
+                            <span class="lw-label">Priority</span>
+                            <span class="lw-value" style="white-space:pre">@($"{Vm.PriorityText}  P{Vm.PriorityPolice} F{Vm.PriorityFire} E{Vm.PriorityEms} O{Vm.PriorityOther}")</span>
+                        </div>
+                        <div><span class="lw-label">Elapsed</span><span class="lw-value lw-mono">@Vm.Elapsed</span></div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ============================================= footer *@
+        <footer class="lw-panel-footer">
+            <div @onmousedown="() => _cancelPressing = true">
+                <DxButton Text="Cancel" CssClass="lw-secondary lw-tc-cancel" RenderStyle="ButtonRenderStyle.None"
+                          Click="OnCancelClick" />
+            </div>
+            <DxButton Text="@(Vm.HasDisposition ? "Save and Complete" : "Dispatch")" CssClass="lw-primary lw-tc-dispatch"
+                      RenderStyle="ButtonRenderStyle.None" Click="() => Vm.DispatchCommand.Execute(null)"
+                      Attributes="@DispatchAttributes" />
+        </footer>
+    </aside>
+}

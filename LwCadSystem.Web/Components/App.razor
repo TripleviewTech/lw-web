@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>LW CAD System</title>
+    <link rel="icon" href="data:," />
+    @DxResourceManager.RegisterTheme(ActiveTheme)
+    @DxResourceManager.RegisterScripts()
+    <link href="@Assets["_content/LwCad.Web.Shared/lwcad.css"]" rel="stylesheet" />
+    <link href="@Assets["cadsystem.css"]" rel="stylesheet" />
+    <link href="@Assets["css/takecall.css"]" rel="stylesheet" />
+    <link href="@Assets["css/selfinit.css"]" rel="stylesheet" />
+    <link href="@Assets["css/assign.css"]" rel="stylesheet" />
+    <link href="@Assets["app.css"]" rel="stylesheet" />
+    <link href="@Assets["LwCadSystem.Web.styles.css"]" rel="stylesheet" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveNoPrerender" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveNoPrerender" />
+    <ReconnectModal />
+    @* Started by hand so the connection is forgiving: a dispatch console stays open all day,
+       often in a background tab. Keep the timeouts in step with Program.cs. *@
+    <script src="@Assets["_framework/blazor.web.js"]" autostart="false"></script>
+    <script>
+        Blazor.start({
+            circuit: {
+                reconnectionOptions: {
+                    maxRetries: 120,
+                    retryIntervalMilliseconds: n => n < 5 ? 1000 : 5000
+                },
+                configureSignalR: builder => builder.withServerTimeout(60000).withKeepAliveInterval(15000)
+            }
+        });
+    </script>
+</body>
+</html>
+
+@code {
+    // Fluent, recoloured by the CAD tokens in lwcad.css / cadsystem.css. The
+    // theme toggle switches it to Fluent dark at runtime (IThemeChangeService).
+    static readonly ITheme ActiveTheme = Themes.Fluent.Clone(properties => properties.Mode = ThemeMode.Light);
+
+    // Not prerendered: each circuit builds one CAD console (and, live, opens the
+    // database once), and the board needs the browser's keyboard module anyway.
+    static readonly IComponentRenderMode InteractiveNoPrerender = new InteractiveServerRenderMode(prerender: false);
+}

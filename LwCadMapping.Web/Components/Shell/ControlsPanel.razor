@@ -1,0 +1,171 @@
+@using System.Globalization
+@using LwCadMapping.Web.State
+
+@* The "Controls" expander: Layers, Features and Options tabs (DxTabs). *@
+@if (S.IsControlsPanelExpanded)
+{
+    <section class="lw-card side-panel controls-panel">
+        <div class="panel-head">
+            <Icon Name="layers" Size="17" />
+            <span class="panel-title">Controls</span>
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" title="Collapse (Ctrl+L)" aria-label="Collapse controls" @onclick="Collapse"><Icon Name="chev-right" /></button>
+        </div>
+
+        <DxTabs @bind-ActiveTabIndex="S.ControlsTab" CssClass="controls-tabs" RenderMode="TabsRenderMode.AllTabs">
+            <DxTabPage Text="Layers">
+                <div class="tab-body layers-tab">
+                    <div class="layer-list">
+                        @foreach (var l in S.Layers)
+                        {
+                            @LayerRow(l)
+                        }
+                    </div>
+                    <div class="layer-detail">
+                        <div class="mono">@S.SelectedLayer.Id</div>
+                        <div class="kv">
+                            <span class="k">Display</span>
+                            <DxCheckBox Checked="@S.SelectedLayer.Visible" CheckedChanged="@((bool v) => SetVisible(S.SelectedLayer, v))">Visible</DxCheckBox>
+                        </div>
+                        <div class="kv">
+                            <span class="k">Fade</span>
+                            <input type="range" min="10" max="100" step="5" aria-label="Fade" value="@((int)(S.SelectedLayer.Fade * 100))"
+                                   @onchange="@(e => SetFade(e))" />
+                            <span class="v">@((int)(S.SelectedLayer.Fade * 100)) %</span>
+                        </div>
+                        <div class="kv">
+                            <span class="k">Size</span>
+                            <input type="range" min="50" max="200" step="10" aria-label="Size" value="@((int)(S.SelectedLayer.Size * 100))"
+                                   @onchange="@(e => SetSize(e))" />
+                            <span class="v">x@(S.SelectedLayer.Size.ToString("0.0", CultureInfo.InvariantCulture))</span>
+                        </div>
+                        <div class="btn-row">
+                            <DxButton Text="Clear" RenderStyle="ButtonRenderStyle.Secondary" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                                      title="Clear the layer's graphics (Found_Locations only)" Click="@(() => Run(S.ClearSelectedLayer))" />
+                            <DxButton Text="Remove Layer" RenderStyle="ButtonRenderStyle.Secondary" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                                      CssClass="stub" Click="@(() => S.NotImplemented("Remove Layer"))" />
+                        </div>
+                    </div>
+                </div>
+            </DxTabPage>
+            <DxTabPage Text="Features">
+                <div class="tab-body">
+                    <p class="note">
+                        The mock-up's feature layers, drawn from approximate demo geography. The agency's real layers come from
+                        <code>CadMapping:OperationalLayers</code> (republished from the desktop .mpk files) and are listed under them.
+                    </p>
+                    @foreach (var l in S.FeatureLayers)
+                    {
+                        <div class="feature-item">
+                            @LayerRow(l)
+                            <div class="detail">@l.Detail</div>
+                        </div>
+                    }
+                    @if (S.Options.OperationalLayers.Count == 0)
+                    {
+                        <p class="note">No operational layers are configured.</p>
+                    }
+                </div>
+            </DxTabPage>
+            <DxTabPage Text="Options">
+                <div class="tab-body options-tab">
+                    <label class="field-label">Marker theme</label>
+                    <DxComboBox Data="@S.MarkerThemes" Value="@S.MarkerTheme" ValueChanged="@((string v) => S.SetMarkerTheme(v))" />
+
+                    <label class="field-label">Minimum priority - hide calls below</label>
+                    <DxComboBox Data="@S.PriorityLevels" Value="@S.PriorityLimit" ValueChanged="@((int v) => S.SetPriorityLimit(v))" />
+
+                    <div class="rail-heading">Behaviour</div>
+                    <DxCheckBox Checked="@S.PopupOverview" CheckedChanged="@((bool v) => S.SetPopupOverview(v))" title="Show the callout over the selected symbol">Popup overview</DxCheckBox>
+                    <DxCheckBox Checked="@S.AutoSelectGraphics" CheckedChanged="@((bool v) => Set(() => S.AutoSelectGraphics = v))" title="Picking a monitor row brings its symbol into view">Auto select graphics</DxCheckBox>
+                    <DxCheckBox Checked="@S.MarkLocationWhenSelected" CheckedChanged="@((bool v) => Set(() => S.MarkLocationWhenSelected = v))" title="Show on Main Map also drops the location pin">Mark location when selected</DxCheckBox>
+
+                    <div class="rail-heading">Coordinates</div>
+                    <DxCheckBox Checked="@S.ShowLatLongDec" CheckedChanged="@((bool v) => S.SetCoordinateFormats(dec: v))">Lat / long (decimal)</DxCheckBox>
+                    <DxCheckBox Checked="@S.ShowLatLongDeg" CheckedChanged="@((bool v) => S.SetCoordinateFormats(deg: v))">Lat / long (degrees)</DxCheckBox>
+                    <DxCheckBox Checked="@S.ShowMapCoords" CheckedChanged="@((bool v) => S.SetCoordinateFormats(map: v))">Map coordinates</DxCheckBox>
+
+                    <div class="rail-heading">Zoom extent</div>
+                    <div class="extent-box mono">@S.ZoomExtentText</div>
+                    <DxButton Text="Set Zoom Extent" RenderStyle="ButtonRenderStyle.Primary" title="The current view becomes the one Reset Map returns to"
+                              Click="@(() => Run(S.SetZoomExtent))" />
+                </div>
+            </DxTabPage>
+        </DxTabs>
+    </section>
+}
+else
+{
+    <button type="button" class="lw-card rail-collapsed" title="Expand (Ctrl+L)" aria-label="Expand controls" @onclick="Collapse">
+        <Icon Name="chev-left" />
+        <span class="vertical">Controls</span>
+    </button>
+}
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+
+    private RenderFragment LayerRow(MapLayerState l) => __builder =>
+    {
+        <div class="layer-row @(S.SelectedLayer == l ? "selected" : "")" @onclick="@(() => Pick(l))" title="@l.Detail">
+            <input type="checkbox" checked="@l.Visible" aria-label="@l.Title" title="Show or hide the layer"
+                   @onchange="@(e => SetVisible(l, e.Value is true))" @onclick:stopPropagation="true" />
+            <span class="swatch" style="background: var(@l.Swatch)"></span>
+            <span class="title">@l.Title</span>
+            @if (l.Kind != LayerKind.Operational)
+            {
+                <span class="count">@l.Count</span>
+            }
+            <button type="button" class="labels @(l.Labels ? "on" : "")" title="Labels" aria-pressed="@(l.Labels ? "true" : "false")"
+                    @onclick="@(() => ToggleLabels(l))" @onclick:stopPropagation="true">Aa</button>
+        </div>
+    };
+
+    private void Pick(MapLayerState l)
+    {
+        S.SelectedLayer = l;
+        S.NotifyChanged();
+    }
+
+    private Task SetVisible(MapLayerState l, bool v)
+    {
+        l.Visible = v;
+        return S.LayerChanged();
+    }
+
+    private Task ToggleLabels(MapLayerState l)
+    {
+        l.Labels = !l.Labels;
+        return S.LayerChanged();
+    }
+
+    private Task SetFade(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) S.SelectedLayer.Fade = v / 100;
+        return S.LayerChanged();
+    }
+
+    private Task SetSize(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) S.SelectedLayer.Size = v / 100;
+        return S.LayerChanged();
+    }
+
+    private void Set(Action a)
+    {
+        a();
+        S.NotifyChanged();
+    }
+
+    private async Task Run(Func<Task> f)
+    {
+        await f();
+        S.NotifyChanged();
+    }
+
+    private void Collapse()
+    {
+        S.IsControlsPanelExpanded = !S.IsControlsPanelExpanded;
+        S.NotifyChanged();
+    }
+}

@@ -1,0 +1,121 @@
+@* Unit Status, Location Change and Release Unit - Views\UnitFunctionPanel.xaml,
+   one card the way LwCad135 runs Status and Location as two modes of one form.
+   Anchored to the top of the board; the body holds the tallest mode's height so
+   switching function does not move the tabs or the buttons. *@
+
+<PanelPopup Name="unitfunction" Visible="Vm.IsOpen" Width="440px" AnchorTop="true" Label="@Vm.Title">
+    <div class="lw-panel-header">
+        <h3 class="lw-panel-title">@Vm.Title</h3>
+        <button class="lw-tool" title="Close" aria-label="Close" @onclick="() => Vm.CancelCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.Close" />
+        </button>
+    </div>
+
+    @if (Vm.HasValidationMessage)
+    {
+        <div class="lw-as-validation" role="alert">
+            <LwIcon Data="@LwIcons.Warning" Size="13" />
+            <span>@Vm.ValidationMessage</span>
+        </div>
+    }
+
+    <div class="lw-panel-body lw-uf-body">
+        @* The three functions, switchable without reopening. *@
+        <span class="lw-field-label">Function</span>
+        <DxTabs ActiveTabIndex="@FunctionIndex" ActiveTabIndexChanged="OnFunctionTab" CssClass="lw-uf-tabs">
+            <DxTabPage Text="Unit Status" />
+            <DxTabPage Text="Location Change" />
+            <DxTabPage Text="Release Unit" />
+        </DxTabs>
+
+        <div class="lw-uf-pair">
+            <div data-lw-autofocus>
+                <span class="lw-field-label">Unit</span>
+                <DxTextBox Text="@Vm.UnitNo" TextChanged="@(v => Vm.UnitNo = v ?? string.Empty)"
+                           BindValueMode="BindValueMode.OnInput" NullText="Unit ID" />
+            </div>
+            <div>
+                <span class="lw-field-label">Currently</span>
+                <div class="lw-uf-current" title="@Vm.Summary">@Vm.Summary</div>
+            </div>
+        </div>
+
+        @* The mode-specific fields. MinHeight is the tallest of the three. *@
+        <div class="lw-uf-mode">
+            @if (Vm.IsStatus)
+            {
+                <div class="lw-uf-field">
+                    <span class="lw-field-label">
+                        New Status
+                        @if (Vm.HasStatusHint)
+                        {
+                            @* The status was advanced for the operator - a suggestion to confirm. *@
+                            <span class="lw-uf-hint">@Vm.StatusHint</span>
+                        }
+                    </span>
+                    <DxComboBox Data="@Vm.Statuses" Value="@Vm.Status" ValueChanged="@((UnitStatusOption v) => Vm.Status = v)"
+                                TextFieldName="@nameof(UnitStatusOption.Display)" />
+                </div>
+            }
+
+            @if (!Vm.IsRelease)
+            {
+                <div class="lw-uf-field">
+                    <span class="lw-field-label">Location</span>
+                    <DxTextBox Text="@Vm.Location" TextChanged="@(v => Vm.Location = v ?? string.Empty)" BindValueMode="BindValueMode.OnInput" />
+                </div>
+                <div class="lw-uf-pair">
+                    <div>
+                        <span class="lw-field-label">Timeout (min)</span>
+                        <DxTextBox Text="@Vm.Timeout" TextChanged="@(v => Vm.Timeout = v ?? string.Empty)" BindValueMode="BindValueMode.OnInput" />
+                    </div>
+                    <div>
+                        <span class="lw-field-label">Remarks</span>
+                        <DxTextBox Text="@Vm.Remarks" TextChanged="@(v => Vm.Remarks = v ?? string.Empty)" BindValueMode="BindValueMode.OnInput" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                @* What the release does to the call is the CCC1 rule, stated before it happens. *@
+                <div class="lw-uf-effect @(Vm.IsLastUnitOnCall ? "last" : null)">
+                    @if (Vm.IsLastUnitOnCall)
+                    {
+                        <LwIcon Data="@LwIcons.Warning" Size="13" />
+                    }
+                    <span>@Vm.ReleaseEffect</span>
+                </div>
+
+                @if (Vm.HasAssignedCall)
+                {
+                    <span class="lw-field-label" style="margin-top:12px">Currently assigned to</span>
+                    <dl class="lw-uf-call">
+                        <dt>Event No.</dt><dd>@Vm.AssignedCall.EventNo</dd>
+                        <dt>Call Type</dt><dd>@Vm.AssignedCall.CallType</dd>
+                        <dt>Location</dt><dd>@Vm.AssignedCall.Location</dd>
+                    </dl>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="lw-panel-footer">
+        <DxButton Text="Cancel" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width120"
+                  Click="() => Vm.CancelCommand.Execute(null)" />
+        <DxButton Text="@Vm.ApplyLabel" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width140"
+                  Click="() => Vm.ApplyCommand.Execute(null)" />
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public UnitFunctionViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    private static readonly Dictionary<string, object> Width120 = new() { ["style"] = "width:120px" };
+    private static readonly Dictionary<string, object> Width140 = new() { ["style"] = "width:140px" };
+
+    private int FunctionIndex => Vm.IsLocation ? 1 : Vm.IsRelease ? 2 : 0;
+
+    private void OnFunctionTab(int index) =>
+        Vm.SetFunctionCommand.Execute(index == 1 ? UnitFunction.Location : index == 2 ? UnitFunction.Release : UnitFunction.Status);
+}

@@ -1,0 +1,139 @@
+/*
+  Take Call and the location select screens - Views\TakeCallPanel.xaml and
+  LocationPickerPanel.xaml. Shared panel classes live in cadsystem.css.
+*/
+
+/* ------------------------------------------------------------ slide-over */
+.lw-tc { width: 524px; max-width: 100vw; }
+
+.lw-tc-head {
+  display: flex; align-items: center; justify-content: space-between; flex: none;
+  height: 34px; padding: 0 10px 0 18px;
+  background: var(--lw-table-header); border-bottom: 1px solid var(--lw-border);
+}
+.lw-tc-head-left, .lw-tc-head-right { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.lw-tc-eventno { margin-left: 2px; white-space: nowrap; }
+.lw-tc-timer {
+  padding: 2px 8px; margin-right: 2px; border-radius: 5px;
+  background: var(--lw-subtle); color: var(--lw-danger);
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; font-weight: 600;
+}
+
+.lw-tc-banner {
+  display: flex; align-items: flex-start; gap: 7px; flex: none;
+  padding: 8px 18px; background: var(--lw-danger-soft); color: var(--lw-danger);
+}
+.lw-tc-banner .lw-icon { flex: none; margin-top: 2px; }
+
+.lw-tc-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 18px; scrollbar-width: thin; }
+
+.lw-tc-row { display: grid; gap: 0 10px; margin-bottom: 12px; grid-template-columns: minmax(0, 1fr); }
+.lw-tc-callcode { grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; }
+.lw-tc-areas { grid-template-columns: 72px repeat(5, minmax(0, 1fr)) 66px; gap: 0 8px; }
+.lw-tc-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lw-tc-person { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 60px minmax(0, 1fr); }
+.lw-tc-address { grid-template-columns: minmax(0, 1fr) 120px 72px; }
+.lw-tc-plate { grid-template-columns: minmax(0, 1fr) 72px 72px 64px; margin-bottom: 10px; }
+.lw-tc-four { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 10px; }
+.lw-tc-field { min-width: 0; }
+.lw-tc-field .lw-field-label { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+
+.lw-tc-edit { width: 100%; }
+.lw-tc-upper input { text-transform: uppercase; }
+.lw-tc-validated { display: inline-flex; color: var(--lw-success); }
+
+/* Priorities P / F / E / O and the band chip. */
+.lw-tc-prios { display: flex; align-items: center; gap: 4px; }
+.lw-tc-prio-box { width: 30px; }
+.lw-tc-prio-edit input { text-align: center; padding-left: 0; padding-right: 0; }
+.lw-tc-prios .lw-prio { margin-left: 4px; height: 22px; border-radius: 5px; }
+
+/* Premise: read-only, red with hazards, accent when there is a list to pick from. */
+.lw-tc-premise { position: relative; }
+.lw-tc-premise .lw-tc-edit input { padding-right: 56px; }
+.lw-tc-premise .hazard input { color: var(--lw-danger); font-weight: 600; }
+.lw-tc-premise .listable input { color: var(--lw-accent); }
+.lw-tc-premise-tools { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
+
+/* Indicator strip. */
+.lw-tc-chips { display: flex; flex-wrap: wrap; margin-bottom: 6px; }
+.lw-chip.lw-tc-warn { background: var(--lw-warning-soft); border-color: var(--lw-warning); color: var(--lw-text); }
+.lw-chip.lw-tc-e911 { background: var(--lw-danger); border-color: var(--lw-danger); color: #fff; font-weight: 600; }
+.lw-tc-notice { margin: 0 0 10px; }
+
+.lw-tc-info { margin: 0 0 12px; padding: 8px 8px 8px 12px; border-radius: 8px; background: var(--lw-subtle); }
+.lw-tc-info-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lw-tc-info-head .lw-field-label { margin: 0; }
+.lw-tc-info-line { margin-bottom: 6px; overflow-wrap: anywhere; }
+.lw-tc-info-heading { font-weight: 600; }
+
+.lw-tc-sep { border: 0; border-top: 1px solid var(--lw-divider); margin: 2px 0 12px; }
+
+.lw-tc-addvehicle {
+  display: flex; align-items: center; gap: 8px; margin: 0 auto 12px; padding: 5px 8px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--lw-text);
+  font-size: var(--lw-size-body); cursor: pointer;
+}
+.lw-tc-addvehicle:hover { background: var(--lw-subtle); }
+.lw-tc-accent { color: var(--lw-accent); }
+.lw-tc-vehicle { margin-bottom: 12px; padding: 12px 12px 2px; border-radius: 8px; background: var(--lw-subtle); }
+
+.lw-tc-callinfo { border-top: 1px solid var(--lw-divider); }
+.lw-tc-callinfo-toggle {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 9px 0; border: 0; background: transparent; color: var(--lw-text);
+  font-size: var(--lw-size-body); cursor: pointer; text-align: left;
+}
+.lw-tc-callinfo-toggle .lw-icon { color: var(--lw-icon); }
+.lw-tc-callinfo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; padding-bottom: 10px; }
+.lw-tc-callinfo-grid > div { margin-bottom: 10px; }
+
+.lw-tc .dxbl-btn.lw-tc-cancel { width: 130px; }
+.lw-tc .dxbl-btn.lw-tc-dispatch { width: 150px; }
+
+/* ------------------------------------------------- collapsed (parked) rail */
+.lw-tc-rail {
+  width: 46px; padding: 8px 0; box-sizing: border-box;
+  align-items: center; box-shadow: none;
+}
+.lw-tc-rail-more { margin-top: 8px; }
+.lw-tc-rail-timer {
+  margin: 10px 5px 0; padding: 3px 2px; align-self: stretch; text-align: center;
+  border-radius: 5px; background: var(--lw-subtle); color: var(--lw-danger);
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; font-weight: 600;
+}
+.lw-tc-rail-label { margin: 10px 0 2px; color: var(--lw-text-muted); font-size: 10px; }
+.lw-tc-rail-code { font-size: 10px; }
+.lw-tc-rail-prio {
+  margin: 10px 5px 0; padding: 3px 2px; align-self: stretch; text-align: center;
+  border-radius: 5px; color: #fff; font-size: 10px; font-weight: 600;
+}
+.lw-tc-rail-prio.high { background: var(--lw-danger); }
+.lw-tc-rail-prio.medium { background: var(--lw-warning); }
+.lw-tc-rail-prio.low { background: var(--lw-success); }
+.lw-tc-rail-spacer { flex: 1; }
+
+/* ------------------------------------------------ location select screens */
+.lw-tc-pick-entered { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--lw-divider); }
+.lw-tc-pick-message { padding: 8px 18px; background: var(--lw-warning-soft); color: var(--lw-text); overflow-wrap: anywhere; }
+.lw-tc-pick-list {
+  flex: 1 1 auto; min-height: 120px; max-height: 420px; overflow: auto;
+  margin: 12px 18px; border: 1px solid var(--lw-border); border-radius: 6px;
+  scrollbar-width: thin;
+}
+.lw-tc-pick-list:focus { outline: none; border-color: var(--lw-accent); }
+.lw-tc-pick-table { width: 100%; border-collapse: collapse; font-size: var(--lw-size-body); }
+.lw-tc-pick-table th {
+  position: sticky; top: 0; z-index: 1;
+  padding: 5px 10px; text-align: left; font-weight: 400; white-space: nowrap;
+  background: var(--lw-table-header); color: var(--lw-text-muted); font-size: var(--lw-size-caption);
+  border-bottom: 1px solid var(--lw-border);
+}
+.lw-tc-pick-table td { padding: 5px 10px; white-space: nowrap; border-bottom: 1px solid var(--lw-divider); cursor: default; }
+.lw-tc-pick-table tr:hover td { background: var(--lw-row-hover); }
+.lw-tc-pick-table tr.selected td { background: var(--lw-row-selected); }
+.lw-tc-pick-table tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--lw-accent); }
+
+.lw-tc-pick-side { padding: 18px; }
+.lw-tc-pick-side p { margin: 0 0 14px; }
+.lw-tc-pick-side-buttons { display: flex; gap: 12px; }

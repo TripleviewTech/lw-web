@@ -1,0 +1,210 @@
+@page "/"
+@using LwCadMapping.Web.Services
+@using LwCadMapping.Web.State
+@using LwCadMapping.Web.Components.Map
+@using LwCadMapping.Web.Components.Shell
+@implements IAsyncDisposable
+@inject MappingSession S
+@inject CadBoard Board
+@inject IJSRuntime JS
+@inject IThemeChangeService ThemeService
+
+<PageTitle>LW CAD Mapping</PageTitle>
+
+<div class="lw-shell">
+    <TopBar S="S" OnToggleTheme="ToggleTheme" OnExit="Exit" />
+    <MapToolbar S="S" />
+
+    <main class="lw-main @(S.IsFocusPanelExpanded ? "" : "focus-collapsed") @(S.IsControlsPanelExpanded ? "" : "controls-collapsed")">
+        <FocusPanel S="S" Map="_map" />
+
+        <section class="lw-card map-card @(S.IsMarking ? "marking" : "")">
+            <CadMap @ref="_map" Session="S" />
+
+            <div class="map-chrome">
+                <div class="zoom-group">
+                    <button type="button" title="Zoom in (+)" aria-label="Zoom in" @onclick="@(() => S.ZoomBy(1))"><Icon Name="plus" /></button>
+                    <button type="button" title="Zoom out (-)" aria-label="Zoom out" @onclick="@(() => S.ZoomBy(-1))"><Icon Name="minus" /></button>
+                </div>
+                <button type="button" class="chrome-btn" title="Reset Map - back to the zoom extent (Ctrl+R)" aria-label="Reset map" @onclick="@(() => S.ResetMap())"><Icon Name="home" /></button>
+                <button type="button" class="chrome-btn" title="Full extent - the agency's whole map" aria-label="Full extent" @onclick="@(() => S.FullExtent())"><Icon Name="extent" /></button>
+                <button type="button" class="chrome-btn" title="Show all units" aria-label="Show all units" @onclick="@(() => S.ShowAllUnits())"><Icon Name="truck" /></button>
+            </div>
+
+            @if (S.HasRoute)
+            {
+                <div class="distance-box">
+                    <div class="t"><Icon Name="route" /> @S.RouteTitle</div>
+                    <div><span class="muted">Distance:</span> <b>@S.RouteMiles</b> <span class="muted">miles ·</span> <b>@S.RouteKm</b> <span class="muted">km</span></div>
+                    <div class="muted small">@S.RouteNote</div>
+                </div>
+            }
+
+            @if (S.IsMarking)
+            {
+                <div class="marking-banner">Click the map to mark a location · Esc cancels</div>
+            }
+
+            <div class="map-note">
+                @S.SelectedBaseMap ·
+                @(S.HasApiKey ? "ArcGIS basemap styles" : "OpenStreetMap - no ArcGIS key")
+                · @(S.IsDemoBoard ? "Demo board, approximate demo geography" : S.HasApiKey ? "Calls geocoded by ArcGIS" : "Calls on approximate demo geography")
+            </div>
+            <div class="map-attribution">@(S.HasApiKey && S.SelectedBaseMap != BaseMaps.OpenStreetMap ? "Powered by Esri · Esri, HERE, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors" : "Powered by Esri · © OpenStreetMap contributors")</div>
+        </section>
+
+        <ControlsPanel S="S" />
+    </main>
+
+    <div class="lw-bottom">
+        <MonitorPanel S="S" />
+        <SelectionPanel S="S" />
+    </div>
+
+    <footer class="lw-status">
+        <span class="status-text">@S.Status</span>
+        @if (!string.IsNullOrEmpty(S.Status))
+        {
+            <button type="button" class="icon-btn small" title="Clear the status line" aria-label="Clear the status line" @onclick="ClearStatus"><Icon Name="x" Size="13" /></button>
+        }
+        <span class="spacer"></span>
+        <span class="source @(S.Board.IsLive ? "live" : "demo")" title="@S.Board.SourceStatus @S.Board.GeocodeStatus">
+            @(S.Board.IsLoading ? "Starting..." : S.Board.IsLive ? "CAD database - read only" : "Demo board")
+            @if (S.Board.LastError is { } err)
+            {
+                <span class="err" title="@err"> · last read failed</span>
+            }
+        </span>
+        <span class="hints">Drag pans · Wheel zooms · Ctrl+K searches · Ctrl+M marks · Ctrl+G GPS · Esc clears</span>
+    </footer>
+</div>
+
+<DxPopup @bind-Visible="S.IsAboutOpen" HeaderText="LW CAD Mapping" Width="540px" CloseOnEscape="true" ShowFooter="true" CssClass="about-popup">
+    <BodyContentTemplate>
+        <div class="about">
+            <div class="muted">Larimore Associates Public Safety Systems</div>
+            <p>
+                The web CAD Mapping program: the design and functions of the LwCadMappingUX mock-up on a real ESRI map
+                (ArcGIS Maps SDK for JavaScript 5.1) and real CAD calls and units read through LwCad.Core.
+            </p>
+            <p>
+                The screens reach the map only through IMapView (show call, show units, select, centre, zoom, fit, mark, snapshot),
+                implemented by the CadMap component over ArcGIS JS. This app is read-only: it never writes to CAD.
+            </p>
+            <dl>
+                <dt>Data</dt><dd>@S.Board.SourceStatus</dd>
+                <dt>Locating</dt><dd>@S.Board.GeocodeStatus</dd>
+                <dt>Base maps</dt><dd>@(S.HasApiKey ? "ArcGIS basemap styles (API key configured)." : "OpenStreetMap - Esri basemap styles need an ArcGIS API key.")</dd>
+                <dt>Units</dt><dd>No AVL feed in Lowell (ADR-007): units are shown at their call or station. GPS tracking is simulated, demo board only.</dd>
+                <dt>Keys</dt><dd>Ctrl+K search · Ctrl+M mark · Ctrl+G GPS · Ctrl+R reset · Ctrl+B / Ctrl+L panels · Ctrl+Shift+C copy map · F1 about · Esc backs out</dd>
+            </dl>
+        </div>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <DxButton Text="Close" RenderStyle="ButtonRenderStyle.Primary" Click="@(() => { S.IsAboutOpen = false; })" />
+    </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    private CadMap? _map;
+    private IJSObjectReference? _shell;
+    private DotNetObjectReference<Home>? _self;
+    private PeriodicTimer? _gpsTimer;
+    private readonly CancellationTokenSource _cts = new();
+
+    protected override void OnInitialized()
+    {
+        S.Changed += OnSessionChanged;
+        Board.Changed += OnBoardChanged;
+        _ = RunGpsTimer();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        // The board may have been published before this circuit subscribed.
+        if (Board.Current.Version != S.Board.Version || S.Board.IsLoading != Board.Current.IsLoading) await S.OnBoardChanged(Board.Current);
+
+        _shell = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shell.js");
+        _self = DotNetObjectReference.Create(this);
+        await _shell.InvokeVoidAsync("registerShortcuts", _self);
+    }
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnBoardChanged(BoardSnapshot snapshot) =>
+        _ = InvokeAsync(async () =>
+        {
+            try { await S.OnBoardChanged(snapshot); }
+            catch (JSDisconnectedException) { }
+        });
+
+    private async Task RunGpsTimer()
+    {
+        _gpsTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await _gpsTimer.WaitForNextTickAsync(_cts.Token))
+            {
+                if (S.IsGpsTracking) await InvokeAsync(S.OnGpsTimer);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (JSDisconnectedException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    [JSInvokable]
+    public async Task OnShortcut(string name)
+    {
+        switch (name)
+        {
+            case "mark": await S.SetMarking(!S.IsMarking); break;
+            case "gps": await S.SetGpsTracking(!S.IsGpsTracking); break;
+            case "reset": await S.ResetMap(); break;
+            case "focusPanel": S.IsFocusPanelExpanded = !S.IsFocusPanelExpanded; break;
+            case "controlsPanel": S.IsControlsPanelExpanded = !S.IsControlsPanelExpanded; break;
+            case "copy": await S.CopyMap(); break;
+            case "about": S.IsAboutOpen = true; break;
+            case "escape": await S.Escape(); break;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        S.IsDark = !S.IsDark;
+        await ThemeService.SetTheme(Themes.Fluent.Clone(p => p.Mode = S.IsDark ? ThemeMode.Dark : ThemeMode.Light));
+        if (_shell is not null) await _shell.InvokeVoidAsync("setTheme", S.IsDark);
+        if (_map is not null) await _map.Refresh();
+        S.Status = S.IsDark ? "Dark theme." : "Light theme.";
+    }
+
+    private void ClearStatus() => S.Status = null;
+
+    private async Task Exit()
+    {
+        // A browser only lets script close a window it opened; say so when it stays open.
+        try { await JS.InvokeVoidAsync("close"); } catch (JSException) { }
+        S.Status = "Exit - the browser keeps a tab it did not open; close it with the tab's own close button.";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        S.Changed -= OnSessionChanged;
+        Board.Changed -= OnBoardChanged;
+        _cts.Cancel();
+        _gpsTimer?.Dispose();
+        if (_shell is not null)
+        {
+            try
+            {
+                await _shell.InvokeVoidAsync("unregisterShortcuts");
+                await _shell.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        _self?.Dispose();
+        _cts.Dispose();
+    }
+}

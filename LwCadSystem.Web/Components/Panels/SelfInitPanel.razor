@@ -1,0 +1,341 @@
+@* Self Initiate / Traffic Stop - Views\SelfInitPanel.xaml (LwCad107 / LwCad112).
+   A slide-over at the right of the board. A dialog in the legacy console, so
+   there is no rail to park it on: it is saved or cancelled. The location select
+   screens and Activate Unit open over it; it is inert while they are up. *@
+
+@if (Vm.IsOpen)
+{
+    <aside id="lw-panel-selfinit" class="lw-slideover lw-si" inert="@Shell.IsPanelOverSelfInit"
+           role="dialog" aria-modal="true" aria-label="@Vm.Title" @onkeydown="OnKeyDown">
+
+        @* ============================================== header *@
+        <div class="lw-si-header">
+            <h3 class="lw-panel-title">@Vm.Title</h3>
+            <span class="lw-si-received">@Vm.ReceivedText</span>
+        </div>
+
+        @* ============================================ validation *@
+        @if (Vm.HasValidationMessage)
+        {
+            <div class="lw-si-banner" role="alert">
+                <LwIcon Data="@LwIcons.Warning" Size="13" />
+                <span>@Vm.ValidationMessage</span>
+            </div>
+        }
+
+        @* ================================================= form *@
+        <div class="lw-si-body">
+
+            @* tbxAV_UnitNo: checked against RST1 on leaving the field and on save. *@
+            <div class="lw-si-row lw-si-unitrow">
+                <div>
+                    <label class="lw-field-label">
+                        Unit / Apparatus
+                        @if (Vm.IsUnitValidated)
+                        {
+                            <span class="lw-si-check" title="Unit found on the roster"><LwIcon Data="@Check" Size="11" StrokeWidth="2" /></span>
+                        }
+                    </label>
+                    <div data-lw-autofocus @onfocusin='() => Focus("text")' @onfocusout="UnitLeft">
+                        <DxTextBox Text="@Vm.UnitNo" TextChanged="v => Vm.UnitNo = v" BindValueMode="BindValueMode.OnInput"
+                                   CssClass="lw-si-upper" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+                <div class="lw-si-unitsummary">@Vm.UnitSummary</div>
+            </div>
+
+            @* On another call: LwCad123 releases it first, with a disposition. *@
+            @if (Vm.UnitIsBusy)
+            {
+                <div class="lw-si-busy">
+                    <div class="lw-si-busytext">@Vm.BusyText</div>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox Data="Vm.Dispositions" TextFieldName="@nameof(LookupItem.Display)"
+                                    Value="Vm.ReleaseDisposition" ValueChanged="(LookupItem v) => Vm.ReleaseDisposition = v"
+                                    NullText="Disposition" SearchMode="ListSearchMode.AutoSearch" />
+                    </div>
+                </div>
+            }
+
+            @* Traffic Stop: the vehicle row sits straight under the unit. *@
+            @if (Vm.IsTrafficStop)
+            {
+                <div class="lw-si-box">
+                    <div class="lw-si-grid lw-si-tsvehicle">
+                        @Text("Plate", Vm.Vehicle.Plate, v => Vm.Vehicle.Plate = v, upper: true)
+                        <div>
+                            <label class="lw-field-label">St</label>
+                            <div @onfocusin='() => Focus("combo")'>
+                                <DxComboBox @ref="_tsState" Data="Vm.States" Value="Vm.Vehicle.PlateState"
+                                            ValueChanged="(string v) => Vm.Vehicle.PlateState = v" SearchMode="ListSearchMode.AutoSearch" />
+                            </div>
+                        </div>
+                        @Text("Make", Vm.Vehicle.Make, v => Vm.Vehicle.Make = v, upper: true)
+                        @Text("Model", Vm.Vehicle.Model, v => Vm.Vehicle.Model = v, upper: true)
+                        @Text("Style", Vm.Vehicle.Style, v => Vm.Vehicle.Style = v, upper: true)
+                        @Text("Color", Vm.Vehicle.Color, v => Vm.Vehicle.Color = v, upper: true)
+                    </div>
+                </div>
+            }
+
+            @* Call Code + the one priority *@
+            <div class="lw-si-row lw-si-coderow">
+                <div>
+                    <label class="lw-field-label">Call Code</label>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox @ref="_callCode" Data="Vm.CallCodes" TextFieldName="@nameof(LookupItem.Display)"
+                                    Value="Vm.CallCode" ValueChanged="(CallCodeItem v) => Vm.CallCode = v"
+                                    NullText="Call Code" SearchMode="ListSearchMode.AutoSearch" />
+                    </div>
+                </div>
+                <div class="lw-si-priority" title="Seeded from the call code for the unit's agency">
+                    <label class="lw-field-label">Priority</label>
+                    <div @onfocusin='() => Focus("text")'>
+                        <DxTextBox Text="@Vm.Priority" TextChanged="v => Vm.Priority = v" BindValueMode="BindValueMode.OnInput"
+                                   CssClass="lw-si-center" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+            </div>
+
+            @* Jurisdiction + the areas the location gives (shown, not typed) *@
+            <div class="lw-si-grid lw-si-areas">
+                <div>
+                    <label class="lw-field-label">Jurisdiction</label>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox Data="Vm.JurisdictionCodes" Value="Vm.Jurisdiction" ValueChanged="(string v) => Vm.Jurisdiction = v" />
+                    </div>
+                </div>
+                @Area("Police", Vm.PoliceCode)
+                @Area("Fire", Vm.FireCode)
+                @Area("EMS", Vm.EmsCode)
+                @Area("Other", Vm.SupportCode)
+                @Area("TOW", Vm.TowCode)
+                <div>
+                    <label class="lw-field-label">FORCE</label>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox Data="Vm.ForceFlags" Value="Vm.Force" ValueChanged="(string v) => Vm.Force = v" />
+                    </div>
+                </div>
+            </div>
+
+            @* Location + Premise *@
+            <div class="lw-si-grid lw-si-two">
+                <div>
+                    <label class="lw-field-label">
+                        Location
+                        @if (Vm.IsLocationValidated)
+                        {
+                            <span class="lw-si-check" title="Location validated"><LwIcon Data="@Check" Size="11" StrokeWidth="2" /></span>
+                        }
+                    </label>
+                    <div data-lw-refocus @onfocusin='() => Focus("location")' @onfocusout="LocationLeft">
+                        <DxTextBox Text="@Vm.Location" TextChanged="v => Vm.Location = Upper(v)" BindValueMode="BindValueMode.OnInput"
+                                   NullText="Address, ST / XST, P/  A/  B/  C/" CssClass="lw-si-upper"
+                                   ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+                <div>
+                    <label class="lw-field-label">Premise</label>
+                    <div class="lw-si-premise @(Vm.PremiseHazard ? "hazard" : Vm.CanListPremises ? "list" : null)">
+                        <DxTextBox Text="@Vm.Premise" ReadOnly="true" NullText="From the location"
+                                   ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                        <span class="lw-si-premise-tools">
+                            @if (Vm.CanListPremises)
+                            {
+                                <button class="lw-tool" title="Premises at this address" aria-label="Premises at this address"
+                                        @onclick="() => Vm.ListPremisesCommand.Execute(null)">
+                                    <LwIcon Data="@LwIcons.Columns" Size="12" />
+                                </button>
+                            }
+                            @if (Vm.CanClearPremise)
+                            {
+                                <button class="lw-tool" title="Clear the premise" aria-label="Clear the premise"
+                                        @onclick="() => Vm.ClearPremiseCommand.Execute(null)">
+                                    <LwIcon Data="@LwIcons.Close" Size="10" />
+                                </button>
+                            }
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            @* The legacy toolbar: Location, Premise, History, Patrol, SOP, Duplicate. *@
+            <div class="lw-si-chips">
+                <button class="lw-chip" disabled="@(!Vm.IsLocationValidated)" title="The geocoded location (LaGeo001)"
+                        @onclick="() => Vm.ShowLocationCommand.Execute(null)">Location</button>
+                <button class="lw-chip @(Vm.PremiseHazard ? "alert" : null)" disabled="@(!Vm.HasPremise)"
+                        title="Red when the premise has hazards on file"
+                        @onclick="() => Vm.ShowLocationCommand.Execute(null)">Premise</button>
+                <button class="lw-chip" disabled="@(!Vm.HasHistory)" title="Earlier calls at this location (LwCad030)"
+                        @onclick="() => Vm.ShowHistoryCommand.Execute(null)">History @Vm.HistoryCount</button>
+                <button class="lw-chip @(Vm.PatrolExact ? "alert" : Vm.HasPatrolHit ? "warn" : null)" disabled="@(!Vm.HasPatrolHit)"
+                        title="Patrol file hits on the location or the plate"
+                        @onclick="() => Vm.ShowPatrolCommand.Execute(null)">Patrol</button>
+                <button class="lw-chip" disabled="@(!Vm.HasSop)" title="The call code's SOPs (CCC2)"
+                        @onclick="() => Vm.ShowSopCommand.Execute(null)">SOP</button>
+                @if (Vm.IsSelfInitiate)
+                {
+                    <button class="lw-chip @(Vm.HasDuplicates ? "warn" : null)" disabled="@(!Vm.HasDuplicates)"
+                            title="Calls on the stack at or near this location"
+                            @onclick="() => Vm.ShowDuplicatesCommand.Execute(null)">Duplicate @Vm.DuplicateCount</button>
+                }
+            </div>
+
+            @if (Vm.HasNotice)
+            {
+                <div class="lw-si-notice">@Vm.Notice</div>
+            }
+
+            @if (Vm.IsInfoOpen)
+            {
+                <div class="lw-si-info">
+                    <div class="lw-si-info-head">
+                        <span class="lw-field-label" style="margin:0">@Vm.InfoTitle</span>
+                        <button class="lw-tool" title="Close the list" aria-label="Close the list" @onclick="() => Vm.CloseInfoCommand.Execute(null)">
+                            <LwIcon Data="@LwIcons.Close" Size="10" />
+                        </button>
+                    </div>
+                    @foreach (var line in Vm.InfoLines)
+                    {
+                        <div class="lw-si-info-line">
+                            <div class="lw-si-info-heading">@line.Heading</div>
+                            @if (line.HasText)
+                            {
+                                <div class="lw-muted">@line.Text</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Origin + Disposition *@
+            <div class="lw-si-grid lw-si-two">
+                <div>
+                    <label class="lw-field-label">Origin</label>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox @ref="_origin" Data="Vm.Origins" TextFieldName="@nameof(LookupItem.Display)"
+                                    Value="Vm.Origin" ValueChanged="(LookupItem v) => Vm.Origin = v" SearchMode="ListSearchMode.AutoSearch" />
+                    </div>
+                </div>
+                <div>
+                    <label class="lw-field-label">Disposition  (closes on entry)</label>
+                    <div @onfocusin='() => Focus("combo")'>
+                        <DxComboBox @ref="_disposition" Data="Vm.Dispositions" TextFieldName="@nameof(LookupItem.Display)"
+                                    Value="Vm.Disposition" ValueChanged="(LookupItem v) => Vm.Disposition = v"
+                                    NullText="None - the unit goes on the call" SearchMode="ListSearchMode.AutoSearch"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </div>
+                </div>
+            </div>
+
+            @* Self Initiate: the vehicle, with plate type and year. *@
+            @if (Vm.IsSelfInitiate)
+            {
+                <div class="lw-si-box">
+                    <div class="lw-si-grid lw-si-sivehicle1">
+                        @Text("Plate", Vm.Vehicle.Plate, v => Vm.Vehicle.Plate = v, upper: true)
+                        <div>
+                            <label class="lw-field-label">St</label>
+                            <div @onfocusin='() => Focus("combo")'>
+                                <DxComboBox @ref="_siState" Data="Vm.States" Value="Vm.Vehicle.PlateState"
+                                            ValueChanged="(string v) => Vm.Vehicle.PlateState = v" SearchMode="ListSearchMode.AutoSearch" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="lw-field-label">Type</label>
+                            <div @onfocusin='() => Focus("combo")'>
+                                <DxComboBox Data="Vm.PlateTypes" Value="Vm.Vehicle.PlateType"
+                                            ValueChanged="(string v) => Vm.Vehicle.PlateType = v" SearchMode="ListSearchMode.AutoSearch" />
+                            </div>
+                        </div>
+                        @Text("Year", Vm.Vehicle.Year, v => Vm.Vehicle.Year = v)
+                    </div>
+                    <div class="lw-si-grid lw-si-sivehicle2">
+                        @Text("Make", Vm.Vehicle.Make, v => Vm.Vehicle.Make = v, upper: true)
+                        @Text("Model", Vm.Vehicle.Model, v => Vm.Vehicle.Model = v, upper: true)
+                        @Text("Style", Vm.Vehicle.Style, v => Vm.Vehicle.Style = v, upper: true)
+                        @Text("Color", Vm.Vehicle.Color, v => Vm.Vehicle.Color = v, upper: true)
+                    </div>
+                </div>
+            }
+
+            @* Traffic Stop: the racial profile (MLB2 05/60-66) and the profiling officer. *@
+            @if (Vm.IsTrafficStop)
+            {
+                <div class="lw-si-box">
+                    <div class="lw-field-label lw-si-boxtitle">Racial Profile</div>
+                    <div class="lw-si-grid lw-si-profile">
+                        @Profile("1. Race", Vm.Races, Vm.Profile.Race, v => Vm.Profile.Race = v)
+                        @Profile("2. Sex", Vm.Sexes, Vm.Profile.Sex, v => Vm.Profile.Sex = v)
+                        @Profile("3. Sector", Vm.Sectors, Vm.Profile.Sector, v => Vm.Profile.Sector = v)
+                        @Profile("4. Disc.", Vm.Discretions, Vm.Profile.Discretion, v => Vm.Profile.Discretion = v)
+                        @Profile("5. Resident", Vm.Residents, Vm.Profile.Resident, v => Vm.Profile.Resident = v)
+                        @Profile("6. Cit / Warn", Vm.CitationWarnings, Vm.Profile.CitationWarning, v => Vm.Profile.CitationWarning = v)
+                        @Profile("7. Search", Vm.Searches, Vm.Profile.Search, v => Vm.Profile.Search = v)
+                        @Text("8. Officer", Vm.ProfileOfficer, v => Vm.ProfileOfficer = v)
+                    </div>
+                    <div class="lw-muted lw-si-officername">@Vm.ProfileOfficerName</div>
+                </div>
+            }
+
+            @* tbx_Remarks *@
+            <div class="lw-si-narrative">
+                <label class="lw-field-label">Narrative</label>
+                <div @onfocusin='() => Focus("memo")'>
+                    <DxMemo Text="@Vm.Narrative" TextChanged="v => Vm.Narrative = v" BindValueMode="BindValueMode.OnInput"
+                            NullText="Enter additional details..." Rows="4" />
+                </div>
+            </div>
+        </div>
+
+        @* ================================================ footer *@
+        <div class="lw-panel-footer">
+            @* Leaving a field for Cancel does not check it (WPF Leaving()): the
+               mouse-down lands before the field's focus-out. *@
+            <span @onmousedown="() => _cancelling = true">
+                <DxButton Text="Cancel" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None"
+                          Attributes="@CancelAttributes" Click="CancelClicked" />
+            </span>
+            <DxButton Text="@(Vm.HasDisposition ? "Save and Complete" : "Save")" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None"
+                      Attributes="@SaveAttributes" Click="() => Vm.SaveCommand.Execute(null)" />
+        </div>
+    </aside>
+}
+
+@code {
+    // ---------------------------------------------------------- fragments
+
+    private RenderFragment Text(string label, string value, Action<string> changed, bool upper = false) => __builder =>
+    {
+        <div>
+            <label class="lw-field-label">@label</label>
+            <div @onfocusin='() => Focus("text")'>
+                <DxTextBox Text="@value" TextChanged="v => changed(upper ? Upper(v) : v ?? string.Empty)"
+                           BindValueMode="BindValueMode.OnInput" CssClass="@(upper ? "lw-si-upper" : null)"
+                           ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+            </div>
+        </div>
+    };
+
+    private static RenderFragment Area(string label, string value) => __builder =>
+    {
+        <div>
+            <label class="lw-field-label">@label</label>
+            <DxTextBox Text="@value" ReadOnly="true" CssClass="lw-si-area" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                       Attributes="@NoTab" />
+        </div>
+    };
+
+    /// <summary>An area box is shown, not typed - out of the tab order, as Focusable=False was.</summary>
+    private static readonly Dictionary<string, object> NoTab = new() { ["tabindex"] = "-1" };
+
+    private RenderFragment Profile(string label, IReadOnlyList<string> values, string value, Action<string> changed) => __builder =>
+    {
+        <div>
+            <label class="lw-field-label">@label</label>
+            <div @onfocusin='() => Focus("combo")'>
+                <DxComboBox Data="values" Value="value" ValueChanged="(string v) => { changed(v ?? string.Empty); StateHasChanged(); }" />
+            </div>
+        </div>
+    };
+}

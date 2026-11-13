@@ -1,0 +1,14 @@
+@using System.Globalization
+@implements IDisposable
+
+@* The legacy toolbar's crimson date and time - its own component so the tick re-renders only this. *@
+<span class="lw-clock">@DateTime.Now.ToString("dddd, MMMM d, yyyy h:mm:ss tt", CultureInfo.GetCultureInfo("en-US"))</span>
+
+@code {
+    private Timer? _timer;
+
+    protected override void OnInitialized() =>
+        _timer = new Timer(_ => InvokeAsync(StateHasChanged), null, 1000, 1000);
+
+    public void Dispose() => _timer?.Dispose();
+}

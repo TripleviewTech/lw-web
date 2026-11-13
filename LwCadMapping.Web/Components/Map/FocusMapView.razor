@@ -1,0 +1,46 @@
+@using LwCadMapping.Web.State
+@implements IAsyncDisposable
+
+@* A live ArcGIS close-up (a second MapView on the main map's layers) that follows its call or unit. *@
+<div class="focus-map-view" @ref="_el"></div>
+
+@code {
+    [Parameter, EditorRequired] public FocusMapState State { get; set; } = default!;
+    [Parameter, EditorRequired] public CadMap? Map { get; set; }
+
+    private ElementReference _el;
+    private string? _fid;
+    private double _lat, _lon;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var module = Map?.Module;
+        if (module is null || Map?.MapId is null) return;
+        try
+        {
+            if (_fid is null)
+            {
+                _lat = State.Centre.Latitude;
+                _lon = State.Centre.Longitude;
+                _fid = await module.InvokeAsync<string?>("createFocus", Map.MapId, _el, _lat, _lon, State.Zoom, null);
+            }
+            else if (State.Centre.Latitude != _lat || State.Centre.Longitude != _lon)
+            {
+                _lat = State.Centre.Latitude;
+                _lon = State.Centre.Longitude;
+                await module.InvokeVoidAsync("setFocusCentre", _fid, _lat, _lon);
+            }
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_fid is not null && Map?.Module is { } module)
+        {
+            try { await module.InvokeVoidAsync("destroyFocus", _fid); }
+            catch (JSDisconnectedException) { }
+            catch (ObjectDisposedException) { }
+        }
+    }
+}

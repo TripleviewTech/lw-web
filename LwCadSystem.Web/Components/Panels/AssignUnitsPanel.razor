@@ -1,0 +1,306 @@
+@using LwCadSystem.Web.Components.Panels.Assign
+@* Assign Call and Assign / Assist - Views\AssignUnitsPanel.xaml. One panel runs
+   the four legacy assign programs (LwCad131 / 132 / 133 / 134) behind its PD /
+   FD / EMS / SPT tabs. Police and support deal their roster into numbered
+   slots; fire and EMS list a row per apparatus type. Picked units queue as
+   removable tokens; the panel stays open after an assign and keeps a Processed
+   Units tray of what this sitting has put on the call. *@
+
+<PanelPopup Name="assign" Visible="Vm.IsOpen" Width="600px" AnchorTop="true" Label="@Vm.Title">
+    @* ================================================= header *@
+    <div class="lw-panel-header lw-as-header">
+        <h3 class="lw-panel-title">@Vm.Title</h3>
+
+        @* The agency tabs - LwCad131's own Assign Fire / EMS / Support buttons. *@
+        <div class="lw-as-tabs" role="tablist" aria-label="Agency">
+            @Tab("PD", "Police", Vm.IsPolice)
+            @Tab("FD", "Fire", Vm.IsFire)
+            @Tab("EMS", "Ems", Vm.IsEms)
+            @Tab("SPT", "Other", Vm.IsOther)
+        </div>
+
+        <div class="lw-as-header-right">
+            <span class="lw-muted lw-as-opened">@Vm.OpenedAt</span>
+            <button class="lw-tool" title="Assign options" aria-label="Assign options" @onclick="() => Vm.MoreCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+            </button>
+            <button class="lw-tool" title="Close" aria-label="Close" @onclick="() => Vm.CancelCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.Close" />
+            </button>
+        </div>
+    </div>
+
+    @* ============================================ program line *@
+    <div class="lw-as-program">
+        <span class="lw-as-program-name">@Vm.ProgramText</span>
+        <span class="lw-muted">@Vm.ModeNote</span>
+    </div>
+
+    @if (Vm.HasValidationMessage)
+    {
+        <div class="lw-as-validation" role="alert">
+            <LwIcon Data="@LwIcons.Warning" Size="13" />
+            <span>@Vm.ValidationMessage</span>
+        </div>
+    }
+
+    <div class="lw-panel-body lw-as-body">
+        @* ================================================ the call *@
+        @if (Vm.HasCall)
+        {
+            <div class="lw-as-call">
+                <div class="lw-as-row2">
+                    <div>
+                        <span class="lw-field-label">Call Code</span>
+                        <div class="lw-as-value">@Vm.CallCodeText</div>
+                    </div>
+                    <div>
+                        <span class="lw-field-label">Priority</span>
+                        <div class="lw-as-prios">
+                            <PriorityDot Label="PD" Priority="Vm.Call.PolicePriority" />
+                            <PriorityDot Label="FD" Priority="Vm.Call.FirePriority" />
+                            <PriorityDot Label="EMS" Priority="Vm.Call.EmsPriority" />
+                            <PriorityDot Label="SPT" Priority="Vm.Call.OtherPriority" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lw-as-row2 with-toggle">
+                    <div>
+                        <span class="lw-field-label">Location</span>
+                        <div class="lw-as-value">@Vm.Call.Location</div>
+                    </div>
+                    <div>
+                        <span class="lw-field-label">Premise</span>
+                        <div class="lw-as-value">@Vm.Call.Premise</div>
+                    </div>
+                    <button class="lw-tool" title="Show the rest of the event" aria-label="Show the rest of the event"
+                            aria-expanded="@(Vm.IsCallDetailExpanded ? "true" : "false")"
+                            @onclick="() => Vm.ToggleCallDetailCommand.Execute(null)">
+                        <LwIcon Data="@LwIcons.ChevronDown" Size="13" Rotate="@(Vm.IsCallDetailExpanded ? 180 : 0)" />
+                    </button>
+                </div>
+
+                @if (Vm.IsCallDetailExpanded)
+                {
+                    <div class="lw-as-row2 with-toggle">
+                        <div>
+                            <span class="lw-field-label">Event No.</span>
+                            <div class="lw-as-value">@Vm.Call.EventNo</div>
+                        </div>
+                        <div>
+                            <span class="lw-field-label">Case No.</span>
+                            <div class="lw-as-value">@Vm.Call.CaseNo</div>
+                        </div>
+                        <span></span>
+                    </div>
+                    <div>
+                        <span class="lw-field-label">Notes</span>
+                        <div class="lw-as-value wrap">@Vm.Call.Notes</div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* ===================================== recommended assignments *@
+        <div class="lw-as-section">
+            <span class="lw-field-label">Recommended Assignments</span>
+
+            @* How these units were chosen - in warning colour when the search had to widen. *@
+            @if (!string.IsNullOrEmpty(Vm.CandidateBasis))
+            {
+                <div class="lw-as-basis @(Vm.IsCandidateListWidened ? "widened" : null)">
+                    @if (Vm.IsCandidateListWidened)
+                    {
+                        <LwIcon Data="@LwIcons.Warning" Size="12" />
+                    }
+                    <span>@Vm.CandidateBasis</span>
+                </div>
+            }
+
+            @if (!Vm.HasGroups)
+            {
+                <div class="lw-muted lw-as-empty">No unit of this agency is free for this call. Switch agency, or name a unit below.</div>
+            }
+            else if (Vm.UsesGroupedLayout)
+            {
+                @* Fire and EMS: a row per apparatus type, in the boards' fixed order. *@
+                <div class="lw-as-groups">
+                    @foreach (var group in Vm.Groups)
+                    {
+                        <div class="lw-as-group">
+                            <div class="lw-as-group-name" title="@group.Name">@group.Name</div>
+                            <div class="lw-as-group-units">
+                                @foreach (var candidate in group.Candidates)
+                                {
+                                    @Candidate(candidate, compact: true)
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                @* Police and support: the numbered slots LwCad131 / LwCad134 carry. *@
+                <div class="lw-as-slots">
+                    @{ var slot = 0; }
+                    @foreach (var group in Vm.Groups)
+                    {
+                        @foreach (var candidate in group.Candidates)
+                        {
+                            slot++;
+                            <div class="lw-as-slot">
+                                <span class="lw-as-slot-no">@slot</span>
+                                @Candidate(candidate, compact: false)
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+
+        @* ============================================ manual assignment *@
+        @* tbxAV_UnitID: a unit named here need not be on this tab's roster - naming
+           a fire unit from the police board is what Assign Fire Unit was for. *@
+        <div class="lw-as-section">
+            <span class="lw-field-label">Manual Assignment</span>
+            <div class="lw-as-manual">
+                <div data-lw-autofocus @onkeydown="OnManualKey">
+                    <DxTextBox Text="@Vm.ManualUnitNo" TextChanged="@(v => Vm.ManualUnitNo = v ?? string.Empty)"
+                               BindValueMode="BindValueMode.OnInput" NullText="Unit ID" />
+                </div>
+                <DxButton Text="Add" CssClass="lw-secondary lw-as-add" RenderStyle="ButtonRenderStyle.None"
+                          Click="() => Vm.AddManualCommand.Execute(null)" />
+            </div>
+        </div>
+
+        @* ============================================ waiting to assign *@
+        @if (Vm.HasQueued)
+        {
+            <div class="lw-as-section">
+                <span class="lw-field-label">Waiting to assign</span>
+                <div class="lw-as-tokens">
+                    @foreach (var queued in Vm.Queued)
+                    {
+                        var candidate = queued;
+                        <span class="lw-as-token" title="@candidate.Summary">
+                            <span class="lw-ag unit lw-as-mini @MonitorColumns.AgencyClass(candidate.Unit.AgencyCode)">@candidate.Unit.AgencyCode</span>
+                            <span>@candidate.UnitNo</span>
+                            <button class="lw-as-token-x" title="@("Remove " + candidate.UnitNo)" aria-label="@("Remove " + candidate.UnitNo)"
+                                    @onclick="() => Vm.RemoveQueuedCommand.Execute(candidate)">
+                                <LwIcon Data="@LwIcons.Close" Size="9" />
+                            </button>
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ========================================= timeout / mdc / state *@
+        <div class="lw-as-section lw-as-options">
+            @if (Vm.HasTimeout)
+            {
+                @* tbxNV_TimeOut - only LwCad131 and LwCad134 carry it. *@
+                <div class="lw-as-timeout">
+                    <span class="lw-field-label">Timeout (min)</span>
+                    <DxTextBox Text="@Vm.Timeout" TextChanged="@(v => Vm.Timeout = v ?? string.Empty)"
+                               BindValueMode="BindValueMode.OnInput" NullText="--" />
+                </div>
+            }
+            <div>
+                <span class="lw-field-label">Mobiles</span>
+                <DxCheckBox T="bool" Checked="@Vm.XmitToMdc" CheckedChanged="@(v => Vm.XmitToMdc = v)">Transmit to MDC</DxCheckBox>
+            </div>
+            <div>
+                <span class="lw-field-label">Assign as</span>
+                @* Dispatch is protected, not removed, on the police and support boards. *@
+                <div class="lw-as-seg" role="radiogroup" aria-label="Assign as">
+                    <button role="radio" aria-checked="@(Vm.IsDispatch ? "true" : "false")" class="@(Vm.IsDispatch ? "on" : null)"
+                            disabled="@(!Vm.IsDispatchAllowed)" @onclick='() => Vm.SetActionCommand.Execute("Dispatch")'>Dispatch</button>
+                    <button role="radio" aria-checked="@(Vm.IsEnRoute ? "true" : "false")" class="@(Vm.IsEnRoute ? "on" : null)"
+                            @onclick='() => Vm.SetActionCommand.Execute("EnRoute")'>En Route</button>
+                    <button role="radio" aria-checked="@(Vm.IsArrived ? "true" : "false")" class="@(Vm.IsArrived ? "on" : null)"
+                            @onclick='() => Vm.SetActionCommand.Execute("Arrived")'>Arrived</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ========================================= processed units *@
+    <div class="lw-as-processed">
+        <button class="lw-as-processed-head" aria-expanded="@(Vm.IsProcessedExpanded ? "true" : "false")"
+                @onclick="() => Vm.ToggleProcessedCommand.Execute(null)">
+            <span>Processed Units</span>
+            <span class="lw-count @(Vm.ProcessedCount == 0 ? "zero" : null)">@Vm.ProcessedCount</span>
+            <span class="lw-as-spacer"></span>
+            <LwIcon Data="@LwIcons.ChevronDown" Size="13" Rotate="@(Vm.IsProcessedExpanded ? 180 : 0)" />
+        </button>
+        @if (Vm.IsProcessedExpanded && Vm.ProcessedCount > 0)
+        {
+            <div class="lw-as-tokens processed">
+                @foreach (var unit in Vm.Processed)
+                {
+                    <span class="lw-as-token">
+                        <span class="lw-ag unit lw-as-mini @MonitorColumns.AgencyClass(unit.AgencyCode)">@unit.AgencyCode</span>
+                        <span>@unit.UnitNo</span>
+                    </span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="lw-panel-footer">
+        <DxButton Text="@Vm.CloseLabel" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width120"
+                  Click="() => Vm.CancelCommand.Execute(null)" />
+        <DxButton Text="@Vm.AssignLabel" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@MinWidth170"
+                  Click="() => Vm.AssignCommand.Execute(null)" />
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public AssignUnitsViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    // DevExpress takes extra attributes through Attributes or as unmatched values, never both.
+    private static readonly Dictionary<string, object> Width120 = new() { ["style"] = "width:120px" };
+    private static readonly Dictionary<string, object> MinWidth170 = new() { ["style"] = "min-width:170px" };
+
+    /// <summary>Enter takes the unit named in the box (ManualUnit_KeyDown), as tbxAV_UnitID did.</summary>
+    private void OnManualKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == "NumpadEnter") Vm.AddManualCommand.Execute(null);
+    }
+
+    private RenderFragment Tab(string text, string agency, bool selected) => __builder =>
+    {
+        <button role="tab" aria-selected="@(selected ? "true" : "false")" class="@(selected ? "on" : null)"
+                @onclick="() => Vm.SetAgencyCommand.Execute(agency)">@text</button>
+    };
+
+    /// <summary>One recommended unit: recommended dot, the areas it covers, and its state (Assign / Queued / Assigned).</summary>
+    private RenderFragment Candidate(AssignCandidate candidate, bool compact) => __builder =>
+    {
+        <button class="lw-as-unit @(candidate.IsAlreadyAssigned ? "assigned" : null) @(candidate.IsQueued ? "queued" : null) @(compact ? "compact" : null)"
+                title="@candidate.Summary" disabled="@(!candidate.CanAssign)"
+                @onclick="() => Vm.QueueCommand.Execute(candidate)">
+            <span class="lw-as-unit-no">@candidate.UnitNo</span>
+            @if (candidate.IsRecommended)
+            {
+                <span class="lw-as-rec" title="Recommended (RST1_RECOMMEND)"></span>
+            }
+            @if (!compact && candidate.AreaText.Length > 0)
+            {
+                <span class="lw-as-area">@candidate.AreaText</span>
+            }
+            @if (candidate.IsAlreadyAssigned || candidate.IsQueued)
+            {
+                <span class="lw-as-state"><LwIcon Data="@LwIcons.CheckSquare" Size="12" /></span>
+            }
+            @if (!compact)
+            {
+                <span class="lw-as-state-text">@candidate.StateText</span>
+            }
+        </button>
+    };
+}

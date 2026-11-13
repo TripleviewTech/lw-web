@@ -1,0 +1,41 @@
+@using LwCadMapping.Web.State
+
+@* The legacy ToolBarTray: Base Map, Reset Map, Mark Location, GPS, Search Location; copy and print on the right. *@
+<div class="lw-toolbar">
+    <span class="lbl">Base map</span>
+    <DxComboBox Data="@S.BaseMapNames" Value="@S.SelectedBaseMap" ValueChanged="@((string v) => S.SetBaseMap(v))"
+                CssClass="basemap-picker" SizeMode="SizeMode.Medium" />
+    @if (!S.HasApiKey)
+    {
+        <span class="hint" title="The legacy list (Streets A/B/C, Night, Topographic, Gray canvases, Imagery, Terrain, National Geographic) maps to ArcGIS basemap styles, which need an ArcGIS API key. Add CadMapping:ArcGisApiKey with dotnet user-secrets.">Esri base maps need an ArcGIS key</span>
+    }
+
+    <span class="sep"></span>
+    <button type="button" class="tb-btn" title="Reset Map (Ctrl+R)" @onclick="@(() => S.ResetMap())"><Icon Name="reset" /> Reset</button>
+    <button type="button" class="tb-btn @(S.IsMarking ? "on" : "")" title="Mark Location - the next click drops a pin (Ctrl+M)" @onclick="@(() => S.SetMarking(!S.IsMarking))"><Icon Name="pin" /> Mark Location</button>
+    <button type="button" class="tb-btn @(S.IsGpsTracking ? "on" : "")"
+            title="@(S.CanSimulateGps ? "Show Unit Location - SIMULATED GPS on the demo board (Ctrl+G)" : "Show Unit Location - Lowell has no AVL feed (ADR-007); units are shown at their call or station")"
+            @onclick="@(() => S.SetGpsTracking(!S.IsGpsTracking))"><Icon Name="gps" /> GPS</button>
+
+    <div class="search @(S.IsSearching ? "busy" : "")" id="lw-search-box">
+        <Icon Name="search" Class="lead" />
+        <input id="lw-search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search location - address, intersection, premise, place or lat / long"
+               value="@S.SearchText" @oninput="@(e => S.SearchText = e.Value?.ToString() ?? "")" @onkeydown="OnKey" />
+        <kbd>Ctrl K</kbd>
+        <button type="button" class="find" @onclick="@(() => S.Search())" disabled="@S.IsSearching">@(S.IsSearching ? "..." : "Find")</button>
+    </div>
+
+    <span class="spacer"></span>
+    <button type="button" class="tb-icon" title="Copy Map to Clipboard (Ctrl+Shift+C)" aria-label="Copy map to clipboard" @onclick="@(() => S.CopyMap())"><Icon Name="copy" Size="17" /></button>
+    <button type="button" class="tb-icon" title="Print Screen (browser print of the map)" aria-label="Print" @onclick="@(() => S.PrintMap())"><Icon Name="print" Size="17" /></button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await S.Search();
+    }
+}

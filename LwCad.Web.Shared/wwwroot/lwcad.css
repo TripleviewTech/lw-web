@@ -1,0 +1,123 @@
+/*
+  LW CAD design tokens: the palette of LwCadSystemUX Themes\Palette.Light/Dark.xaml
+  (sampled from the Figma CAD_Dashboard boards), as CSS custom properties.
+  Every key in the light set exists in the dark set. DevExpress components are
+  themed from these through the --dxbl-* overrides at the bottom.
+  The theme follows data-theme="dark|light" on <html>.
+*/
+:root {
+  --lw-window: #F3F4F6;
+  --lw-top-bar: #FFFFFF;
+  --lw-rail: #F9FAFB;
+  --lw-rail-item: #FFFFFF;
+  --lw-rail-item-hover: #F0F1F3;
+  --lw-card: #FFFFFF;
+  --lw-card-header: #FFFFFF;
+  --lw-table-header: #F3F4F6;
+  --lw-row-hover: #F6F8FA;
+  --lw-row-selected: #E6F3FD;
+  --lw-row-expanded: #F8FAFC;
+  --lw-input: #FFFFFF;
+  --lw-subtle: #F3F4F6;
+  --lw-segment-track: #F3F4F6;
+  --lw-segment-selected: #FFFFFF;
+  --lw-border: #E1E2E4;
+  --lw-border-strong: #CBD0D6;
+  --lw-divider: #EDEEF1;
+  --lw-text: #111827;
+  --lw-text-muted: #6B7280;
+  --lw-text-faint: #9AA1AC;
+  --lw-text-on-accent: #FFFFFF;
+  --lw-icon: #3D4450;
+  --lw-accent: #0085E6;
+  --lw-accent-hover: #0A78CC;
+  --lw-accent-soft: #DFF0FC;
+  --lw-success: #10B981;
+  --lw-success-soft: #DCFCE7;
+  --lw-danger: #EF4444;
+  --lw-danger-soft: #FEE2E2;
+  --lw-warning: #D97706;
+  --lw-warning-soft: #FEF3C7;
+  --lw-agency-police: #0085E6;
+  --lw-agency-fire: #EF4444;
+  --lw-agency-ems: #0D9488;
+  --lw-agency-other: #B8860B;
+  --lw-overlay: rgba(15, 23, 42, .35);
+  --lw-shadow-card: 0 1px 10px rgba(17, 24, 39, .06);
+  --lw-shadow-panel: 0 0 28px rgba(17, 24, 39, .22);
+  --lw-radius: 8px;
+  --lw-font: "Segoe UI", "Inter", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --lw-window: #191919;
+  --lw-top-bar: #202020;
+  --lw-rail: #202020;
+  --lw-rail-item: #2C2C2C;
+  --lw-rail-item-hover: #383838;
+  --lw-card: #191919;
+  --lw-card-header: #191919;
+  --lw-table-header: #202020;
+  --lw-row-hover: #242424;
+  --lw-row-selected: #0F2E45;
+  --lw-row-expanded: #1F1F1F;
+  --lw-input: #202020;
+  --lw-subtle: #2C2C2C;
+  --lw-segment-track: #202020;
+  --lw-segment-selected: #2C2C2C;
+  --lw-border: #2C2C2C;
+  --lw-border-strong: #3D3D3D;
+  --lw-divider: #262626;
+  --lw-text: #E8E8E8;
+  --lw-text-muted: #999999;
+  --lw-text-faint: #6E6E6E;
+  --lw-text-on-accent: #FFFFFF;
+  --lw-icon: #C8C8C8;
+  --lw-accent: #0085E6;
+  --lw-accent-hover: #1A94EF;
+  --lw-accent-soft: #12354E;
+  --lw-success: #209B20;
+  --lw-success-soft: #143014;
+  --lw-danger: #E44753;
+  --lw-danger-soft: #3A1D20;
+  --lw-warning: #E0A106;
+  --lw-warning-soft: #382C12;
+  --lw-agency-police: #0B6FB8;
+  --lw-agency-fire: #CA434D;
+  --lw-agency-ems: #14A89B;
+  --lw-agency-other: #C99A2E;
+  --lw-overlay: rgba(0, 0, 0, .55);
+  --lw-shadow-card: 0 1px 10px rgba(0, 0, 0, .35);
+  --lw-shadow-panel: 0 0 28px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--lw-window);
+  color: var(--lw-text);
+  font-family: var(--lw-font);
+  font-size: 13px;
+}
+
+/* DevExpress Fluent theme driven by the CAD tokens. */
+:root {
+  --dxbl-primary: var(--lw-accent);
+  --dxbl-body-bg: var(--lw-card);
+  --dxbl-body-color: var(--lw-text);
+  --dxbl-border-color: var(--lw-border);
+}
+.dxbl-grid { --dxbl-grid-bg: var(--lw-card); --dxbl-grid-color: var(--lw-text); --dxbl-grid-border-color: var(--lw-border); }
+
+/* Shell pieces used by both apps. */
+.lw-card { background: var(--lw-card); border: 1px solid var(--lw-border); border-radius: var(--lw-radius); box-shadow: var(--lw-shadow-card); }
+.lw-muted { color: var(--lw-text-muted); }
+.lw-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; padding: 0 6px; height: 18px; border-radius: 9px; font-size: 11px; font-weight: 600; }
+.lw-badge.alert { background: var(--lw-danger-soft); color: var(--lw-danger); }
+.lw-badge.ok { background: var(--lw-success-soft); color: var(--lw-success); }
+.lw-agency { display: inline-block; min-width: 30px; text-align: center; padding: 1px 4px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff; }
+.lw-agency.P { background: var(--lw-agency-police); }
+.lw-agency.F { background: var(--lw-agency-fire); }
+.lw-agency.E { background: var(--lw-agency-ems); }
+.lw-agency.O { background: var(--lw-agency-other); }

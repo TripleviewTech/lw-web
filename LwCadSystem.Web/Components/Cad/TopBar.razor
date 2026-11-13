@@ -1,0 +1,65 @@
+@* The top bar - ShellWindow.xaml row 0: agency, operator, session and 911
+   position on the left; Map, Monitor, CAD Alerts and the workstation tools on
+   the right. The buttons are in the tab order so Ctrl+T (Alt+T) can reach them. *@
+
+<header class="lw-topbar">
+    <div class="lw-topbar-left">
+        <span class="lw-agency-primary">@Shell.AgencyNamePrimary</span>
+        <span class="lw-agency-secondary">@Shell.AgencyNameSecondary</span>
+        <span class="lw-topbar-meta">ID: @Shell.OperatorId</span>
+        <span class="lw-topbar-meta">SESSION: @Shell.SessionId</span>
+        <span class="lw-topbar-meta">911 POS: @Shell.E911Position</span>
+    </div>
+
+    <div class="lw-topbar-right">
+        @* Fixed buttons on the legacy console too (btn_Map, btn_MonitorOpen), so
+           they name their program directly rather than going through KYB. *@
+        <button id="lw-topbar-first" class="lw-toplink" title="LwCadMapping - CAD Map"
+                @onclick='() => Shell.RunFunctionCommand.Execute("CADMAPPING")'>Map</button>
+        <button class="lw-toplink" title="LwCadUnitMonitor - Unit Status Monitor"
+                @onclick='() => Shell.RunFunctionCommand.Execute("CADUNITMONITOR")'>Monitor</button>
+        @* The legacy flashes its alert indicator while any stacked or active call
+           has an alert waiting; here the count of those calls rides on the button. *@
+        <button class="lw-toplink" title="Call alerts - every stacked or active call with an alert waiting"
+                @onclick="() => Shell.CadAlertsCommand.Execute(null)">
+            CAD Alerts
+            @if (Shell.HasPendingAlerts)
+            {
+                <span class="lw-dot-badge">@Shell.PendingAlertCount</span>
+            }
+        </button>
+
+        <button class="lw-toptool boxed" title="Message inbox" aria-label="Message inbox"
+                @onclick='() => Shell.NotImplementedCommand.Execute("Message inbox")'>
+            <LwIcon Data="@LwIcons.Inbox" />
+        </button>
+
+        <button class="lw-toptool" title="Notifications" aria-label="Notifications"
+                @onclick='() => Shell.NotImplementedCommand.Execute("Notifications")'>
+            <LwIcon Data="@LwIcons.Bell" />
+            @if (Shell.HasNotifications)
+            {
+                <span class="lw-dot-badge" style="top:-1px;right:-2px">@Shell.NotificationCount</span>
+            }
+        </button>
+
+        <button class="lw-toptool" title="Lock this session" aria-label="Lock this session"
+                @onclick='() => Shell.NotImplementedCommand.Execute("Session lock")'>
+            <LwIcon Data="@LwIcons.Lock" />
+        </button>
+
+        <button class="lw-toptool" title="Switch between the light and dark board" aria-label="Switch between the light and dark board"
+                @onclick="() => Shell.ToggleThemeCommand.Execute(null)">
+            <LwIcon Data="@(Shell.IsDark ? LwIcons.Sun : LwIcons.Moon)" />
+        </button>
+
+        <button class="lw-toptool" title="Workstation menu" aria-label="Workstation menu"
+                @onclick='() => Shell.NotImplementedCommand.Execute("Workstation menu")'>
+            <LwIcon Data="@LwIcons.Ellipsis" Solid="true" />
+        </button>
+    </div>
+</header>
+
+@code {
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+}

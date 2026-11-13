@@ -1,0 +1,134 @@
+@* The location select screens - Views\LocationPickerPanel.xaml: LaGeo041
+   Address, 042 Premise, 043 Intersection, 044 Alarm Number, 045 Common Name and
+   the premise list (LwPmm905) as one card, plus the split-segment Left / Right
+   question (LaGeo043 DefaultSide). Over Take Call or Self Initiate.
+
+   The rows are a styled table rather than DxGrid: the columns are a different
+   string list for every screen, the cursor starts on the first row, and the
+   keyboard model is the legacy ListView's (arrows move, Enter / double-click
+   take the row). A DxGrid would need its columns rebuilt per screen and its
+   own focused-row model reconciled with SelectedRow for no gain. *@
+
+<PanelPopup Name="locationpicker" Visible="Vm.IsOpen" Width="960px" AnchorTop="true" Label="@Vm.Title" ZIndex="1200">
+    <div class="lw-panel-header">
+        <h3 class="lw-panel-title">@Vm.Title</h3>
+        <button class="lw-tool" title="Cancel" aria-label="Cancel" @onclick="() => Vm.CancelCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.Close" />
+        </button>
+    </div>
+
+    <div class="lw-tc-pick-entered">
+        <span class="lw-muted">Location entered</span>
+        <strong>@Vm.Entered</strong>
+    </div>
+
+    @if (Vm.HasMessage)
+    {
+        <div class="lw-tc-pick-message">@Vm.Message</div>
+    }
+
+    @if (Vm.IsList)
+    {
+        <div class="lw-tc-pick-list" tabindex="0" role="listbox" aria-label="@Vm.Title" data-lw-autofocus data-lw-refocus
+             @onkeydown="OnListKeyDown">
+            <table class="lw-tc-pick-table">
+                <thead>
+                    <tr>
+                        @foreach (var column in Vm.Columns)
+                        {
+                            <th>@column</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int r = 0; r < Vm.Rows.Count; r++)
+                    {
+                        var row = Vm.Rows[r];
+                        var index = r;
+                        <tr id="@RowId(index)" role="option" aria-selected="@(ReferenceEquals(row, Vm.SelectedRow) ? "true" : "false")"
+                            class="@(ReferenceEquals(row, Vm.SelectedRow) ? "selected" : null)"
+                            @onclick="() => Vm.SelectedRow = row"
+                            @ondblclick="() => { Vm.SelectedRow = row; Vm.OkCommand.Execute(null); }">
+                            @for (int c = 0; c < Vm.Columns.Count; c++)
+                            {
+                                <td>@(c < row.Cells.Count ? row.Cells[c] : string.Empty)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="lw-tc-pick-side">
+            <p>This intersection is on a split record. Which side of the street?</p>
+            <div class="lw-tc-pick-side-buttons">
+                <div data-lw-autofocus>
+                    <DxButton Text="Left" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@Wide120"
+                              Click="() => Vm.LeftCommand.Execute(null)" />
+                </div>
+                <DxButton Text="Right" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@Wide120"
+                          Click="() => Vm.RightCommand.Execute(null)" />
+            </div>
+        </div>
+    }
+
+    <div class="lw-panel-footer">
+        @if (Vm.IsList)
+        {
+            <DxButton Text="View" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@ViewAttributes"
+                      Click="() => Vm.ViewCommand.Execute(null)" />
+        }
+        <span class="spacer"></span>
+        <DxButton Text="Cancel" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Click="() => Vm.CancelCommand.Execute(null)" />
+        @if (Vm.CanForce)
+        {
+            <DxButton Text="Force" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@ForceAttributes"
+                      Click="() => Vm.ForceCommand.Execute(null)" />
+        }
+        @if (Vm.IsList)
+        {
+            <DxButton Text="OK" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Click="() => Vm.OkCommand.Execute(null)" />
+        }
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public LocationPickerViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+    [CascadingParameter] public CadShell Host { get; set; } = default!;
+
+    private static readonly Dictionary<string, object> Wide120 = new() { ["style"] = "width:120px" };
+    private static readonly Dictionary<string, object> ViewAttributes = new() { ["title"] = "Open the geocode or premise record" };
+    private static readonly Dictionary<string, object> ForceAttributes = new() { ["title"] = "Accept the location as entered, not geocoded" };
+
+    private static string RowId(int index) => "lw-pick-row-" + index;
+
+    /// <summary>The ListView keys: the cursor moves with the arrows, Enter takes the row (Grid_KeyDown).</summary>
+    private async Task OnListKeyDown(KeyboardEventArgs e)
+    {
+        var rows = Vm.Rows;
+        if (rows.Count == 0) return;
+
+        var index = Vm.SelectedRow == null ? -1 : rows.IndexOf(Vm.SelectedRow);
+        int next;
+        switch (e.Key)
+        {
+            case "ArrowDown": next = Math.Min(index + 1, rows.Count - 1); break;
+            case "ArrowUp": next = Math.Max(index - 1, 0); break;
+            case "Home": next = 0; break;
+            case "End": next = rows.Count - 1; break;
+            case "PageDown": next = Math.Min(Math.Max(index, 0) + 10, rows.Count - 1); break;
+            case "PageUp": next = Math.Max(index - 10, 0); break;
+            case "Enter":
+                Vm.OkCommand.Execute(null);
+                return;
+            default:
+                return;
+        }
+
+        Vm.SelectedRow = rows[next];
+        await Host.RunJs("reveal", RowId(next));
+    }
+}

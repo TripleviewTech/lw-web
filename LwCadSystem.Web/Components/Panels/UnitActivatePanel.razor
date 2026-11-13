@@ -1,0 +1,121 @@
+@* Activate Unit - Views\UnitActivatePanel.xaml (LwCad129). A card over the
+   board, or over Self Initiate when a unit it was given is not on the roster.
+   Pre-filled from UNT1; police need an employee and may have up to five report
+   areas, fire and EMS a station, and fire apparatus carry no crew. *@
+@using LwCadSystemUX.Services.SelfInit
+
+<PanelPopup Name="unitactivate" Visible="Vm.IsOpen" Width="560px" AnchorTop="true" Label="@Vm.Title">
+    <div @onkeydown="OnKeyDown">
+        <div class="lw-panel-header">
+            <h3 class="lw-panel-title">@Vm.Title</h3>
+            <button class="lw-tool" title="Cancel" aria-label="Cancel" @onclick="() => Vm.CancelCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.Close" />
+            </button>
+        </div>
+
+        @if (Vm.HasMessage)
+        {
+            <div class="lw-si-banner" role="alert"><span>@Vm.Message</span></div>
+        }
+
+        <div class="lw-panel-body lw-ua-body">
+            <div class="lw-si-grid lw-ua-row1">
+                <div>
+                    <label class="lw-field-label">Unit / Apparatus</label>
+                    @* The first field: Unit when it is to be typed, else the agency (UnitActivatePanel.FocusFirst). *@
+                    <div data-lw-autofocus="@(Vm.IsUnitEditable ? "" : null)" @onfocusin='() => _focus = "text"' @onfocusout="UnitLeft">
+                        <DxTextBox Text="@Vm.UnitNo" TextChanged="v => Vm.UnitNo = v" BindValueMode="BindValueMode.OnInput"
+                                   ReadOnly="@(!Vm.IsUnitEditable)" CssClass="lw-si-upper"
+                                   ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+                <div>
+                    <label class="lw-field-label">Agency</label>
+                    <div data-lw-autofocus="@(Vm.IsUnitEditable ? null : "")" @onfocusin='() => _focus = "combo"'>
+                        <DxComboBox Data="Vm.Agencies" TextFieldName="@nameof(AgencyItem.Display)"
+                                    Value="Vm.Agency" ValueChanged="(AgencyItem v) => Vm.Agency = v" />
+                    </div>
+                </div>
+                <div>
+                    <label class="lw-field-label">Jurisdiction</label>
+                    <div @onfocusin='() => _focus = "combo"'>
+                        <DxComboBox Data="Vm.Jurisdictions" TextFieldName="@nameof(LookupItem.Code)"
+                                    Value="Vm.Jurisdiction" ValueChanged="(LookupItem v) => Vm.Jurisdiction = v" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="lw-si-grid lw-si-two">
+                <div>
+                    <label class="lw-field-label">Type</label>
+                    <div @onfocusin='() => _focus = "combo"'>
+                        <DxComboBox Data="Vm.UnitTypes" TextFieldName="@nameof(LookupItem.Description)"
+                                    Value="Vm.UnitType" ValueChanged="(LookupItem v) => Vm.UnitType = v" SearchMode="ListSearchMode.AutoSearch" />
+                    </div>
+                </div>
+                <div class="@(Vm.HasStation ? null : "lw-ua-off")">
+                    <label class="lw-field-label">Fire / EMS Station</label>
+                    <div @onfocusin='() => _focus = "combo"'>
+                        <DxComboBox Data="Vm.Stations" TextFieldName="@nameof(LookupItem.Description)" Enabled="Vm.HasStation"
+                                    Value="Vm.Station" ValueChanged="(LookupItem v) => Vm.Station = v" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="lw-si-grid lw-ua-crew @(Vm.HasCrew ? null : "lw-ua-off")">
+                <div>
+                    <label class="lw-field-label">Employee (1)</label>
+                    <div @onfocusin='() => _focus = "text"'>
+                        <DxTextBox Text="@Vm.Employee1" TextChanged="v => Vm.Employee1 = v" BindValueMode="BindValueMode.OnInput"
+                                   Enabled="Vm.HasCrew" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+                <span class="lw-muted lw-ellipsis lw-ua-name">@Vm.Employee1Name</span>
+                <div>
+                    <label class="lw-field-label">Employee (2)</label>
+                    <div @onfocusin='() => _focus = "text"'>
+                        <DxTextBox Text="@Vm.Employee2" TextChanged="v => Vm.Employee2 = v" BindValueMode="BindValueMode.OnInput"
+                                   Enabled="Vm.HasCrew" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                    </div>
+                </div>
+                <span class="lw-muted lw-ellipsis lw-ua-name">@Vm.Employee2Name</span>
+            </div>
+
+            <div class="@(Vm.IsPolice ? null : "lw-ua-off")">
+                <label class="lw-field-label">Police Assignment(s) - report areas</label>
+                <div class="lw-si-grid lw-ua-areas" @onfocusin='() => _focus = "text"'>
+                    @Area(Vm.Area1, v => Vm.Area1 = v)
+                    @Area(Vm.Area2, v => Vm.Area2 = v)
+                    @Area(Vm.Area3, v => Vm.Area3 = v)
+                    @Area(Vm.Area4, v => Vm.Area4 = v)
+                    @Area(Vm.Area5, v => Vm.Area5 = v)
+                </div>
+            </div>
+        </div>
+
+        <div class="lw-panel-footer">
+            <DxButton Text="Cancel" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@CancelAttributes"
+                      Click="() => Vm.CancelCommand.Execute(null)" />
+            <DxButton Text="Activate" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@SaveAttributes"
+                      Click="() => Vm.SaveCommand.Execute(null)" />
+        </div>
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public UnitActivateViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+    [CascadingParameter] public CadShell Host { get; set; } = default!;
+
+    private static readonly Dictionary<string, object> CancelAttributes = new() { ["style"] = "width:120px" };
+    private static readonly Dictionary<string, object> SaveAttributes = new() { ["style"] = "width:140px", ["title"] = "F3 or Enter" };
+
+    /// <summary>What kind of field has the caret: text or combo.</summary>
+    private string _focus = string.Empty;
+
+    private RenderFragment Area(string value, Action<string> changed) => __builder =>
+    {
+        <DxTextBox Text="@value" TextChanged="v => changed(v)" BindValueMode="BindValueMode.OnInput" Enabled="Vm.IsPolice"
+                   CssClass="lw-si-upper" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+    };
+}

@@ -1,0 +1,174 @@
+@* CAD Alerts - Views\CadAlertsPanel.xaml: LwCad301 with LwCad302 folded in.
+   Left, the stacked and active calls with alerts waiting; right, the picked call
+   and its alerts, pending first. Tick and Acknowledge, or type a new alert and
+   Send it to every agency on the call. Styled lists rather than DxGrid: the rows
+   are two-line cards with badges, and the alert rows carry a wrapping remark. *@
+
+<PanelPopup Name="cadalerts" Visible="Vm.IsOpen" Width="980px" AnchorTop="true" Label="@Vm.Title" CssClass="lw-al-popup">
+    <div class="lw-panel-header lw-al-header">
+        <div class="lw-al-title">
+            <LwIcon Data="@LwIcons.Bell" Size="14" />
+            <h3 class="lw-panel-title">@Vm.Title</h3>
+            <span class="lw-muted">Stacked and active calls with alerts waiting</span>
+        </div>
+        <div class="lw-al-tools">
+            <button class="lw-al-refresh" @onclick="() => Vm.RefreshCommand.Execute(null)">Refresh</button>
+            <button class="lw-tool" title="Close" aria-label="Close" @onclick="() => Vm.CloseCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.Close" />
+            </button>
+        </div>
+    </div>
+
+    @if (Vm.HasMessage)
+    {
+        <div class="lw-al-message @(Vm.MessageIsError ? "error" : null)" role="status">@Vm.Message</div>
+    }
+
+    <div class="lw-al-body">
+        @* ============================================ call list *@
+        <div class="lw-al-calls" tabindex="0" role="listbox" aria-label="Calls with alerts" data-lw-autofocus
+             @onkeydown="OnListKey">
+            @foreach (var item in Vm.Calls)
+            {
+                var row = item;
+                var selected = ReferenceEquals(row, Vm.SelectedRow);
+                <div @key="row" class="lw-al-call @(selected ? "selected" : null)" role="option" aria-selected="@(selected ? "true" : "false")"
+                     @onclick="() => Vm.SelectedRow = row">
+                    <div class="lw-al-line">
+                        <span class="lw-ag @MonitorColumns.AgencyClass(row.Call.AgencyCode)">@row.Call.AgencyCode</span>
+                        <span class="lw-al-type">@row.Call.CallType</span>
+                        @if (row.HasPending)
+                        {
+                            <span class="lw-count alert" title="Alerts waiting">@row.Pending</span>
+                        }
+                    </div>
+                    <div class="lw-al-line sub">
+                        <span>@row.Call.EventNo</span>
+                        <span>@row.QueueText</span>
+                        <span>P@(row.Call.PriorityNumber)</span>
+                        @if (row.IsCadFusion)
+                        {
+                            @* The legacy paints a CADfusion call yellow. *@
+                            <span class="lw-al-fusion">CADfusion</span>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!Vm.HasCalls)
+            {
+                <div class="lw-muted lw-al-empty">@Vm.EmptyListText</div>
+            }
+        </div>
+
+        @* ============================================ picked call *@
+        <div class="lw-al-detail">
+            @if (Vm.HasSelectedCall)
+            {
+                var call = Vm.SelectedCall;
+                <div class="lw-al-callhead">
+                    <div class="lw-al-line">
+                        <span class="lw-ag @MonitorColumns.AgencyClass(call.AgencyCode)">@call.AgencyCode</span>
+                        <span class="lw-al-type strong">@call.CallType</span>
+                        <span class="lw-muted">@call.EventNo</span>
+                    </div>
+                    <div class="lw-al-loc">@call.Location</div>
+                    <div class="lw-al-line">
+                        <span class="lw-muted" style="margin-right:8px">Units</span>
+                        @if (call.HasAssignedUnits)
+                        {
+                            @foreach (var unit in call.AssignedUnits)
+                            {
+                                <span class="lw-unit-chip @MonitorColumns.AgencyClass(unit.AgencyCode)">@unit.UnitNo</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="lw-muted">None</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="lw-al-alerts-head">
+                    <span class="lw-field-label" style="margin:0">Alerts</span>
+                    @if (Vm.HasPending)
+                    {
+                        <button class="lw-al-refresh" @onclick="() => Vm.TickAllCommand.Execute(null)">Tick all pending</button>
+                    }
+                </div>
+
+                <div class="lw-al-alerts">
+                    @foreach (var item in Vm.Alerts)
+                    {
+                        var alert = item;
+                        <div @key="alert" class="lw-al-alert @(alert.IsPending ? "pending" : "done")">
+                            <div class="lw-al-tick">
+                                @if (alert.IsPending)
+                                {
+                                    <DxCheckBox T="bool" Checked="@alert.IsChecked" CheckedChanged="@(v => alert.IsChecked = v)"
+                                                aria-label="Tick to acknowledge" />
+                                }
+                            </div>
+                            <div class="lw-al-when">
+                                <div>@alert.TimeText</div>
+                                <div class="lw-muted">@alert.EnteredText</div>
+                            </div>
+                            <div>
+                                <div class="lw-al-remarks">@alert.Remarks</div>
+                                <div class="lw-al-status">@alert.StatusText</div>
+                            </div>
+                        </div>
+                    }
+                    @if (!Vm.HasAlerts)
+                    {
+                        <div class="lw-muted lw-al-empty">No alerts on this call yet.</div>
+                    }
+                </div>
+
+                @* Add an alert - LwCad302. *@
+                <div class="lw-al-new">
+                    <span class="lw-field-label">New alert - sent to every agency on the call</span>
+                    <div class="lw-al-new-row">
+                        <DxMemo Text="@Vm.NewAlertText" TextChanged="@(v => Vm.NewAlertText = v ?? string.Empty)"
+                                BindValueMode="BindValueMode.OnInput" Rows="2" NullText="Alert message" CssClass="lw-al-memo" />
+                        <DxButton Text="Send Alert" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width130"
+                                  Click="() => Vm.SendCommand.Execute(null)" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="lw-panel-footer">
+        <span class="lw-muted lw-al-foot">Acknowledging marks the ticked alerts read for every console (DST1 ALERT_SW X). An alert that arrived over CADfusion also tells CADfusion.</span>
+        <DxButton Text="Close" CssClass="lw-secondary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width110"
+                  Click="() => Vm.CloseCommand.Execute(null)" />
+        <DxButton Text="@Vm.AcknowledgeLabel" CssClass="lw-primary" RenderStyle="ButtonRenderStyle.None" Attributes="@Width160"
+                  Click="() => Vm.AcknowledgeCommand.Execute(null)" />
+    </div>
+</PanelPopup>
+
+@code {
+    [Parameter, EditorRequired] public CadAlertsViewModel Vm { get; set; } = default!;
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    private static readonly Dictionary<string, object> Width110 = new() { ["style"] = "width:110px" };
+    private static readonly Dictionary<string, object> Width130 = new() { ["style"] = "width:130px" };
+    private static readonly Dictionary<string, object> Width160 = new() { ["style"] = "width:160px" };
+
+    /// <summary>The call list cursors like the WPF ListBox: Up / Down / Home / End pick a row.</summary>
+    private void OnListKey(KeyboardEventArgs e)
+    {
+        var rows = Vm.Calls;
+        if (rows.Count == 0) return;
+        var index = Vm.SelectedRow == null ? -1 : rows.IndexOf(Vm.SelectedRow);
+        var next = e.Key switch
+        {
+            "ArrowDown" => Math.Min(index + 1, rows.Count - 1),
+            "ArrowUp" => Math.Max(index - 1, 0),
+            "Home" => 0,
+            "End" => rows.Count - 1,
+            _ => index
+        };
+        if (next >= 0 && next != index) Vm.SelectedRow = rows[next];
+    }
+}

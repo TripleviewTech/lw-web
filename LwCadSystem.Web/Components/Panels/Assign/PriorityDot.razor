@@ -1,0 +1,14 @@
+@* One per-agency priority - "PD: 1" with the band dot: 1-3 red, 4-6 amber, 7-9
+   green, the split the monitors read (PriorityToBrush / PriorityToText). *@
+<span class="lw-as-prio">
+    <span class="lw-as-prio-label">@Label:</span>
+    <span class="lw-as-prio-value">@(Priority <= 0 ? "-" : Priority.ToString())</span>
+    <span class="lw-as-prio-dot @Band"></span>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter] public int Priority { get; set; }
+
+    private string Band => Priority <= 0 ? "none" : Priority <= 3 ? "high" : Priority <= 6 ? "medium" : "low";
+}

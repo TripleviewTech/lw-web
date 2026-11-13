@@ -1,0 +1,146 @@
+@using LwCadMapping.Web.Services
+@using LwCadMapping.Web.State
+
+@* CallsLiveMonitor, CallsPendingMonitor and UnitStatusMonitor (DxGrid), with the legacy row buttons. *@
+<section class="lw-card monitor-panel">
+    <div class="panel-head monitor-head">
+        <div class="segment" role="tablist">
+            <button type="button" role="tab" class="@(S.MonitorTab == "Active" ? "on" : "")" @onclick="@(() => Tab("Active"))">Active Calls <span class="count">@S.ActiveCount</span></button>
+            <button type="button" role="tab" class="@(S.MonitorTab == "Pending" ? "on" : "")" @onclick="@(() => Tab("Pending"))">Pending <span class="count">@S.PendingCount</span></button>
+            <button type="button" role="tab" class="@(S.MonitorTab == "Units" ? "on" : "")" @onclick="@(() => Tab("Units"))">Units <span class="count">@S.UnitCount</span></button>
+        </div>
+        @if (S.UnlocatedCalls > 0 && S.MonitorTab != "Units")
+        {
+            <span class="unlocated" title="These calls' locations could not be geocoded; they are listed but not drawn.">@S.UnlocatedCalls not located</span>
+        }
+        <span class="spacer"></span>
+        <button type="button" class="tb-btn" disabled="@(S.CurrentRow is null)" title="Show on Main Map (double-click a row)" @onclick="@(() => S.ShowOnMainMap())"><Icon Name="map" /> Main Map</button>
+        <button type="button" class="tb-btn" disabled="@(S.CurrentRow is null)" title="Show Focus Map" @onclick="@(() => S.OpenFocusMap())"><Icon Name="focus" /> Focus Map</button>
+        <button type="button" class="tb-btn" disabled="@(S.CurrentRow is null)" title="Zoom In on the row" @onclick="@(() => S.ZoomToRow())"><Icon Name="zoom" /> Zoom In</button>
+        @if (S.MonitorTab == "Units")
+        {
+            <button type="button" class="tb-btn @(S.HasRoute ? "on" : "")" disabled="@(!S.CanRoute)" title="Route to Destination - unit to its call" @onclick="@(() => S.RouteSelectedUnit())"><Icon Name="route" /> Route</button>
+        }
+    </div>
+
+    <div class="grid-host">
+        @if (S.Board.IsLoading)
+        {
+            <div class="grid-empty">Reading the CAD monitors...</div>
+        }
+        else if (S.MonitorTab == "Active")
+        {
+            <DxGrid Data="@S.ActiveCalls" KeyFieldName="Key" SelectionMode="GridSelectionMode.Single" AllowSelectRowByClick="false"
+                    SelectedDataItem="@(S.SelectedCall is { IsPending: false } ? S.SelectedCall : null)"
+                    RowClick="OnRowClick" RowDoubleClick="OnRowDoubleClick" CustomizeElement="Customize"
+                    ShowAllRows="true" VirtualScrollingEnabled="true" HighlightRowOnHover="true" TextWrapEnabled="false"
+                    CssClass="monitor-grid" SizeMode="SizeMode.Small" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer">
+                <Columns>
+                    <DxGridDataColumn FieldName="Priority" Caption="P" Width="48px">
+                        <CellDisplayTemplate><span class="pri p@(((MapCall)context.DataItem).Priority)"></span>@(((MapCall)context.DataItem).Priority)</CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="CallType" Caption="Call Type" Width="150px">
+                        <CellDisplayTemplate><span class="calltype ag-@(((MapCall)context.DataItem).Agency)">@(((MapCall)context.DataItem).CallType)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="EventNo" Caption="Event" Width="140px" />
+                    <DxGridDataColumn FieldName="Jur" Caption="Jur" Width="46px" />
+                    <DxGridDataColumn FieldName="Area" Caption="Area" Width="56px" />
+                    <DxGridDataColumn FieldName="Location" Caption="Location" MinWidth="160" />
+                    <DxGridDataColumn FieldName="Time" Caption="Time" Width="58px" />
+                    <DxGridDataColumn FieldName="UnitsText" Caption="Units" Width="90px" />
+                    <DxGridDataColumn FieldName="Info" Caption="Additional Info" MinWidth="120" />
+                    <DxGridDataColumn FieldName="Status" Caption="Status" Width="86px">
+                        <CellDisplayTemplate><span class="pill st-@(((MapCall)context.DataItem).Status.ToLowerInvariant())">@(((MapCall)context.DataItem).Status)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="CaseNo" Caption="Case No." Width="100px" />
+                </Columns>
+            </DxGrid>
+        }
+        else if (S.MonitorTab == "Pending")
+        {
+            <DxGrid Data="@S.PendingCalls" KeyFieldName="Key" SelectionMode="GridSelectionMode.Single" AllowSelectRowByClick="false"
+                    SelectedDataItem="@(S.SelectedCall is { IsPending: true } ? S.SelectedCall : null)"
+                    RowClick="OnRowClick" RowDoubleClick="OnRowDoubleClick" CustomizeElement="Customize"
+                    ShowAllRows="true" VirtualScrollingEnabled="true" HighlightRowOnHover="true" TextWrapEnabled="false"
+                    CssClass="monitor-grid" SizeMode="SizeMode.Small" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer">
+                <Columns>
+                    <DxGridDataColumn FieldName="Priority" Caption="P" Width="48px">
+                        <CellDisplayTemplate><span class="pri p@(((MapCall)context.DataItem).Priority)"></span>@(((MapCall)context.DataItem).Priority)</CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="CallType" Caption="Call Type" Width="150px">
+                        <CellDisplayTemplate><span class="calltype ag-@(((MapCall)context.DataItem).Agency)">@(((MapCall)context.DataItem).CallType)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="EventNo" Caption="Event" Width="140px" />
+                    <DxGridDataColumn FieldName="Jur" Caption="Jur" Width="46px" />
+                    <DxGridDataColumn FieldName="Area" Caption="Area" Width="56px" />
+                    <DxGridDataColumn FieldName="Location" Caption="Location" MinWidth="160" />
+                    <DxGridDataColumn FieldName="Premise" Caption="Premise" Width="130px" />
+                    <DxGridDataColumn FieldName="Info" Caption="Additional Info" MinWidth="120" />
+                    <DxGridDataColumn FieldName="Time" Caption="Time" Width="58px" />
+                    <DxGridDataColumn FieldName="Origin" Caption="Origin" Width="120px" />
+                </Columns>
+            </DxGrid>
+        }
+        else
+        {
+            <DxGrid Data="@S.Units" KeyFieldName="UnitNo" SelectionMode="GridSelectionMode.Single" AllowSelectRowByClick="false"
+                    SelectedDataItem="@S.SelectedUnit"
+                    RowClick="OnRowClick" RowDoubleClick="OnRowDoubleClick" CustomizeElement="Customize"
+                    ShowAllRows="true" VirtualScrollingEnabled="true" HighlightRowOnHover="true" TextWrapEnabled="false"
+                    CssClass="monitor-grid" SizeMode="SizeMode.Small" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer">
+                <Columns>
+                    <DxGridDataColumn FieldName="UnitNo" Caption="Unit" Width="80px">
+                        <CellDisplayTemplate><span class="unit-chip ag-@(((MapUnit)context.DataItem).Agency)">@(((MapUnit)context.DataItem).UnitNo)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="StatusText" Caption="Status" Width="120px">
+                        <CellDisplayTemplate><span class="pill @(((MapUnit)context.DataItem).IsAvailable ? "st-available" : "st-active")">@(((MapUnit)context.DataItem).StatusText)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="UnitType" Caption="Type" Width="90px" />
+                    <DxGridDataColumn FieldName="Station" Caption="Station" Width="80px" />
+                    <DxGridDataColumn FieldName="VehId" Caption="Veh ID" Width="80px" />
+                    <DxGridDataColumn FieldName="CallType" Caption="Call Type" Width="120px" />
+                    <DxGridDataColumn FieldName="Area" Caption="Area" Width="70px" />
+                    <DxGridDataColumn FieldName="Location" Caption="Location" MinWidth="140" />
+                    <DxGridDataColumn FieldName="Time" Caption="Time" Width="58px" />
+                    <DxGridDataColumn Caption="Last Fix" Width="90px" UnboundType="GridUnboundColumnType.String" FieldName="LastFix">
+                        <CellDisplayTemplate><span class="mono muted">@S.LastFixText((MapUnit)context.DataItem)</span></CellDisplayTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+            </DxGrid>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+
+    private void Tab(string tab)
+    {
+        S.MonitorTab = tab;
+        S.NotifyChanged();
+    }
+
+    private Task OnRowClick(GridRowClickEventArgs e)
+    {
+        var row = e.Grid.GetDataItem(e.VisibleIndex);
+        return row is null ? Task.CompletedTask : S.SelectRow(row);
+    }
+
+    private Task OnRowDoubleClick(GridRowClickEventArgs e)
+    {
+        var row = e.Grid.GetDataItem(e.VisibleIndex);
+        return row is null ? Task.CompletedTask : S.ShowOnMainMap(row);
+    }
+
+    private void Customize(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType != GridElementType.DataRow) return;
+        var agency = e.Grid.GetDataItem(e.VisibleIndex) switch
+        {
+            MapCall c => c.Agency,
+            MapUnit u => u.Agency,
+            _ => "OTH",
+        };
+        e.CssClass = "row-ag ag-" + agency;
+    }
+}

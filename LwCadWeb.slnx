@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="LwCad.Core/LwCad.Core.csproj" />
+  <Project Path="LwCad.Web.Shared/LwCad.Web.Shared.csproj" />
+  <Project Path="LwCadMapping.Web/LwCadMapping.Web.csproj" />
+  <Project Path="LwCadSystem.Web/LwCadSystem.Web.csproj" />
+</Solution>

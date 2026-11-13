@@ -1,0 +1,53 @@
+@* The Quick Menu rail - Views\QuickMenuPanel.xaml: the KYB3 A-Z keys of the
+   session's keyboard template. Search stays at the top and filters the rail;
+   the rail collapses to a 40px strip. A key not built yet has a muted caption. *@
+
+@if (Shell.IsRailExpanded)
+{
+    <nav class="lw-rail" aria-label="Quick Menu">
+        <div class="lw-rail-head">
+            <span>Quick Menu</span>
+            <button class="lw-tool" title="Collapse the quick menu" aria-label="Collapse the quick menu"
+                    @onclick="() => Shell.ToggleRailCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.ChevronsLeft" Size="13" />
+            </button>
+        </div>
+
+        <div class="lw-rail-search">
+            <DxTextBox Text="@Shell.QuickMenuSearch" TextChanged="@(v => Shell.QuickMenuSearch = v ?? string.Empty)"
+                       BindValueMode="BindValueMode.OnInput" NullText="Search" CssClass="lw-search-box"
+                       InputCssClass="lw-search-input" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                       aria-label="Search the Quick Menu" />
+            <span class="lw-kbd">Ctrl K</span>
+        </div>
+
+        <div class="lw-rail-list">
+            @foreach (var item in Shell.QuickMenuItems.Where(i => i.IsVisible))
+            {
+                var action = item;
+                <button class="lw-qbtn @(action.IsStub ? "stub" : null)" title="@action.Detail" aria-label="@action.Title"
+                        disabled="@(!action.IsEnabled)" @onclick="() => Run(action)">
+                    <span class="title">@action.Title</span>
+                    <span class="hint">@action.ShortcutText</span>
+                </button>
+            }
+        </div>
+    </nav>
+}
+else
+{
+    <nav class="lw-rail collapsed" aria-label="Quick Menu">
+        <div class="lw-rail-head">
+            <button class="lw-tool" title="Expand the quick menu" aria-label="Expand the quick menu"
+                    @onclick="() => Shell.ToggleRailCommand.Execute(null)">
+                <LwIcon Data="@LwIcons.ChevronsRight" Size="13" />
+            </button>
+        </div>
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    private static void Run(MenuAction action) => action.Command.Execute(action.CommandParameter);
+}

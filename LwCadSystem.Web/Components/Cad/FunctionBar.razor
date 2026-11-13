@@ -1,0 +1,44 @@
+@* The Standard Functions bar - Views\StandardFunctionsBar.xaml, the legacy
+   CadMain ExpFunctions: the 27 KYB2 keys, one bank per row - F1-F9, Shift
+   F1-F9, Ctrl F1-F9. Every cell is kept, blank ones disabled, so a key is always
+   where the template put it. Folds to its header. *@
+
+<section class="lw-fbar" aria-label="Standard Functions">
+    <div class="lw-fbar-head">
+        <span>Standard Functions<span class="lw-fbar-source">@Shell.Keymap.Source</span></span>
+        <button class="lw-tool" title="Fold or unfold the Standard Functions" aria-label="Fold or unfold the Standard Functions"
+                aria-expanded="@(Shell.IsFunctionBarExpanded ? "true" : "false")"
+                @onclick="() => Shell.ToggleFunctionBarCommand.Execute(null)">
+            <LwIcon Data="@LwIcons.ChevronDown" Size="13" Rotate="@(Shell.IsFunctionBarCollapsed ? 180 : 0)" />
+        </button>
+    </div>
+
+    @if (Shell.IsFunctionBarExpanded)
+    {
+        <div class="lw-fbar-grid">
+            @Bank("F", Shell.FunctionKeys)
+            @Bank("Shift", Shell.ShiftFunctionKeys)
+            @Bank("Ctrl", Shell.CtrlFunctionKeys)
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ShellViewModel Shell { get; set; } = default!;
+
+    private RenderFragment Bank(string label, IEnumerable<MenuAction> keys) => __builder =>
+    {
+        <span class="bank">@label</span>
+        @foreach (var key in keys)
+        {
+            var action = key;
+            <button class="lw-qbtn @(action.IsStub ? "stub" : null) @(action.IsBlank ? "blank" : null)"
+                    title="@action.Detail" aria-label="@(action.IsBlank ? action.Detail : action.Title)"
+                    disabled="@(!action.IsEnabled)"
+                    @onclick="() => action.Command.Execute(action.CommandParameter)">
+                <span class="title">@action.Title</span>
+                <span class="hint">@action.ShortcutText</span>
+            </button>
+        }
+    };
+}

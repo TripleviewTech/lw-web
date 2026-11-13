@@ -1,0 +1,82 @@
+@using LwCadMapping.Web.State
+@using LwCadMapping.Web.Components.Map
+
+@* The "Focus Maps \ GPS Tracking" expander: up to four live ArcGIS close-ups, and the unit tracking list. *@
+@if (S.IsFocusPanelExpanded)
+{
+    <section class="lw-card side-panel focus-panel">
+        <div class="panel-head">
+            <Icon Name="focus" Size="17" />
+            <span class="panel-title">Focus Maps</span>
+            <span class="count">@S.FocusMaps.Count</span>
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" title="Collapse (Ctrl+B)" aria-label="Collapse focus maps" @onclick="Collapse"><Icon Name="chev-left" /></button>
+        </div>
+
+        <div class="focus-list">
+            @if (S.FocusMaps.Count == 0)
+            {
+                <div class="empty">
+                    <strong>No focus maps open</strong>
+                    <span>Pick a call or unit in the monitor and press Focus Map for a close-up that stays on it. Up to four stay open.</span>
+                </div>
+            }
+            @foreach (var fm in S.FocusMaps)
+            {
+                <div class="focus-card" @key="fm.Id">
+                    <div class="focus-head">
+                        <span class="kind-chip @fm.Kind.ToLowerInvariant()">@fm.Kind</span>
+                        <span class="focus-title">@fm.Title</span>
+                        <span class="spacer"></span>
+                        <button type="button" class="icon-btn" title="Show on Main Map" aria-label="Show on main map" @onclick="@(() => S.FocusToMain(fm))"><Icon Name="map" /></button>
+                        <button type="button" class="icon-btn" title="Close" aria-label="Close focus map" @onclick="@(() => S.CloseFocusMap(fm))"><Icon Name="x" /></button>
+                    </div>
+                    <div class="focus-sub" title="@fm.Subtitle">@fm.Subtitle</div>
+                    <FocusMapView State="fm" Map="Map" />
+                </div>
+            }
+        </div>
+
+        <div class="gps-head">
+            <Icon Name="gps" />
+            <span class="panel-title small">GPS Tracking</span>
+            <span class="spacer"></span>
+            <button type="button" class="pill-btn @(S.IsGpsTracking ? "on" : "")"
+                    title="@(S.CanSimulateGps ? "Show Unit Location - simulated (Ctrl+G)" : "No AVL feed in Lowell (ADR-007)")"
+                    @onclick="@(() => S.SetGpsTracking(!S.IsGpsTracking))">
+                @(S.IsGpsTracking ? "Tracking (simulated)" : S.CanSimulateGps ? "Track" : "No AVL")
+            </button>
+        </div>
+        <div class="gps-list">
+            @foreach (var u in S.Units)
+            {
+                <div class="gps-row @(S.SelectedUnit?.UnitNo == u.UnitNo ? "selected" : "")" @key="u.UnitNo"
+                     @onclick="@(() => S.SelectRow(u))" @ondblclick="@(() => S.OpenFocusMap(u))">
+                    <span class="dot ag-@u.Agency"></span>
+                    <span class="unit">@u.UnitNo</span>
+                    <span class="st">@u.StatusText</span>
+                    <span class="spd">@(S.IsGpsTracking ? $"{S.SpeedOf(u):0} mph" : "")</span>
+                    <span class="fix">@S.LastFixText(u)</span>
+                </div>
+            }
+        </div>
+    </section>
+}
+else
+{
+    <button type="button" class="lw-card rail-collapsed" title="Expand (Ctrl+B)" aria-label="Expand focus maps" @onclick="Collapse">
+        <Icon Name="chev-right" />
+        <span class="vertical">Focus Maps \ GPS Tracking</span>
+    </button>
+}
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+    [Parameter] public CadMap? Map { get; set; }
+
+    private void Collapse()
+    {
+        S.IsFocusPanelExpanded = !S.IsFocusPanelExpanded;
+        S.NotifyChanged();
+    }
+}

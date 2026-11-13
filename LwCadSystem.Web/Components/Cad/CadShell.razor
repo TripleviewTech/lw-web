@@ -1,0 +1,109 @@
+@* The CAD dashboard - LwCadSystemUX Views\ShellWindow.xaml. The board (top bar,
+   Quick Menu rail, the three call monitors, the Unit Monitor, the Standard
+   Functions bar, the status line), then the modal layer over the whole window. *@
+@implements IAsyncDisposable
+
+<CascadingValue Value="this" IsFixed="true">
+<div class="lw-shell">
+
+    @* ================================================== the board
+       Inert while a panel holds the console: out of the tab order and away from
+       the mouse, as IsEnabled=False did in WPF. *@
+    <div class="lw-board" inert="@Shell.IsModalOpen">
+
+        <TopBar Shell="Shell" />
+
+        <div class="lw-content" style="grid-template-columns: auto minmax(360px, @Fr(_callsWeight)) 6px minmax(340px, @Fr(_unitsWeight));">
+
+            <QuickMenu Shell="Shell" />
+
+            @* Stacked, Active, then Delayed - the order of the original board. Each
+               track is the monitor's RowHeight, so the chevron and the grab bars
+               write to the same place. A fitted monitor's track is auto. *@
+            <div class="lw-calls" data-lw-min="360"
+                 style="grid-template-rows: @Track(Shell.Stacked) 8px @Track(Shell.Active) 8px @Track(Shell.Delayed);">
+                <CallMonitor Monitor="Shell.Stacked" Shell="Shell" ListKey="stacked" Layout="_layouts[0]" Cursor="CursorFor(Shell.Stacked)" />
+                <div class="lw-hsplit" data-lw-split="stacked-active" tabindex="0" role="separator" aria-orientation="horizontal"
+                     aria-label="Resize Stacked against Active" title="Drag to give one monitor more of the board"></div>
+                <CallMonitor Monitor="Shell.Active" Shell="Shell" ListKey="active" Layout="_layouts[1]" Cursor="CursorFor(Shell.Active)" />
+                <div class="lw-hsplit" data-lw-split="active-delayed" tabindex="0" role="separator" aria-orientation="horizontal"
+                     aria-label="Resize Active against Delayed" title="Drag to give one monitor more of the board"></div>
+                <CallMonitor Monitor="Shell.Delayed" Shell="Shell" ListKey="delayed" Layout="_layouts[2]" Cursor="CursorFor(Shell.Delayed)" />
+            </div>
+
+            <div class="lw-vsplit" data-lw-split="calls-units" data-lw-split-axis="columns" tabindex="0" role="separator"
+                 aria-orientation="vertical" aria-label="Resize the call monitors against the Unit Monitor"
+                 title="Drag to give the calls or the units more of the board"></div>
+
+            <UnitMonitor Monitor="Shell.Units" Shell="Shell" Layout="_layouts[3]" Cursor="_unitCursor" />
+        </div>
+
+        @* The legacy ExpFunctions: F1-F9, Shift F1-F9, Ctrl F1-F9 from KYB2. *@
+        <FunctionBar Shell="Shell" />
+
+        <footer class="lw-status" role="status" aria-live="polite">
+            <span class="lw-status-text" title="@Shell.StatusMessage">@Shell.StatusMessage</span>
+            <span class="lw-status-right">
+                <span>F1-F9, Shift, Ctrl for the Standard Functions  -  Ctrl+K then a letter for the Quick Menu  -  Ctrl+S / A / D / U for the monitors  -  Alt+T / Alt+W for the toolbar and the working call</span>
+                @if (Shell.HasStatus)
+                {
+                    <button class="lw-tool" style="width:18px;height:18px" title="Clear the status line" aria-label="Clear the status line"
+                            @onclick="() => Shell.ClearStatusCommand.Execute(null)">
+                        <LwIcon Data="@LwIcons.Close" Size="10" />
+                    </button>
+                }
+            </span>
+        </footer>
+    </div>
+
+    @* ============================================== modal layer
+       The scrim covers the whole window. Take Call parked on its rail is not
+       modal, so the scrim is down and the board is live behind it. *@
+    @if (Shell.IsModalOpen)
+    {
+        <div class="lw-scrim"></div>
+    }
+
+    @* Take Call and Self Initiate slide over the right of the board. A panel
+       opened over them (DxPopup, with its own shading) makes them inert. *@
+    <TakeCallPanel Vm="Shell.TakeCall" Shell="Shell" />
+    <SelfInitPanel Vm="Shell.SelfInit" Shell="Shell" />
+
+    @if (Shell.IsPanelOverTakeCall || Shell.IsPanelOverSelfInit)
+    {
+        <div class="lw-scrim over-slideover"></div>
+    }
+
+    <UnitFunctionPanel Vm="Shell.UnitFunctions" Shell="Shell" />
+    <AssignUnitsPanel Vm="Shell.AssignUnits" Shell="Shell" />
+    <LocationPickerPanel Vm="Shell.LocationPicker" Shell="Shell" />
+    <UnitActivatePanel Vm="Shell.UnitActivate" Shell="Shell" />
+    <CadAlertsPanel Vm="Shell.CadAlerts" Shell="Shell" />
+    <FunctionStubPanel Vm="Shell.FunctionStub" Shell="Shell" />
+
+    @* The ellipsis menus at the end of a call or unit row (Views\RowMenu.cs). *@
+    <DxContextMenu @ref="_callMenu" CssClass="lw-rowmenu" Hidden="OnMenuHidden">
+        <Items>
+            @foreach (var action in Shell.CallRowActions.Where(a => a.IsVisible))
+            {
+                var item = action;
+                <DxContextMenuItem Text="@item.Title" CssClass="@(item.IsStub ? "stub" : null)"
+                                   Attributes="@(new Dictionary<string, object> { ["title"] = item.Detail ?? item.Title })"
+                                   Click="() => RunAction(item)" />
+            }
+        </Items>
+    </DxContextMenu>
+
+    <DxContextMenu @ref="_unitMenu" CssClass="lw-rowmenu" Hidden="OnMenuHidden">
+        <Items>
+            @foreach (var action in Shell.UnitRowActions.Where(a => a.IsVisible))
+            {
+                var item = action;
+                <DxContextMenuItem Text="@item.Title" Click="() => RunAction(item)" />
+            }
+        </Items>
+    </DxContextMenu>
+
+    <DxDialogProvider />
+</div>
+</CascadingValue>

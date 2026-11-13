@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    UI shared by LwCadSystem.Web and LwCadMapping.Web: the DevExpress Blazor
+    theme with the CAD palette as CSS tokens, the top bar, and the CadMap
+    component (ArcGIS Maps SDK for JavaScript behind the IMapView seam).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="DevExpress.Blazor" Version="26.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LwCad.Core\LwCad.Core.csproj" />
+  </ItemGroup>
+
+</Project>

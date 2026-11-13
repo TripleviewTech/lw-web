@@ -1,0 +1,29 @@
+@* One stroked (or, with Solid, filled) 24x24 icon from LwIcons, as inline SVG.
+   Colour follows currentColor so a button's text colour drives it. *@
+<svg class="lw-icon @CssClass" width="@Size" height="@Size" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+     style="@(Rotate == 0 ? null : $"transform:rotate({Rotate}deg)")">
+    @if (Solid)
+    {
+        <path d="@Data" fill="currentColor" stroke="none" />
+    }
+    else
+    {
+        <path d="@Data" fill="none" stroke="currentColor" stroke-width="@StrokeWidth" stroke-linecap="round" stroke-linejoin="round" />
+    }
+</svg>
+
+@code {
+    /// <summary>SVG path data, usually an LwIcons constant.</summary>
+    [Parameter, EditorRequired] public string Data { get; set; } = string.Empty;
+
+    [Parameter] public int Size { get; set; } = 16;
+
+    /// <summary>Filled rather than stroked (the XAML Icon.Solid style - the ellipsis).</summary>
+    [Parameter] public bool Solid { get; set; }
+
+    [Parameter] public double StrokeWidth { get; set; } = 1.6;
+
+    [Parameter] public int Rotate { get; set; }
+
+    [Parameter] public string? CssClass { get; set; }
+}

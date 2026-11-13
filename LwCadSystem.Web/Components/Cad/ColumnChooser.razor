@@ -1,0 +1,37 @@
+@* The column checklist behind a monitor's columns button - the CallListPanel /
+   UnitMonitorPanel popup. Call Type and Unit cannot be hidden; Reset to default
+   puts the list back to its per-list default set. *@
+
+<button id="@ButtonId" class="lw-tool @(_open ? "on" : null)" tabindex="-1"
+        title="Show or hide columns" aria-label="Choose columns" aria-expanded="@(_open ? "true" : "false")"
+        @onclick="() => _open = !_open">
+    <LwIcon Data="@LwIcons.Columns" />
+</button>
+
+<DxFlyout PositionTarget="@("#" + ButtonId)" IsOpen="_open" IsOpenChanged="v => _open = v"
+          Position="FlyoutPosition.BottomEnd" CloseOnOutsideClick="true" HeaderVisible="false" FooterVisible="false"
+          CssClass="lw-chooser-flyout">
+    <BodyContentTemplate>
+        <div class="lw-chooser">
+            <div class="lw-chooser-title">Columns</div>
+            @foreach (var column in Columns)
+            {
+                var spec = column;
+                <div class="lw-chooser-item">
+                    <DxCheckBox T="bool" Checked="@spec.IsVisible" CheckedChanged="@(v => spec.IsVisible = v)" Enabled="@spec.CanHide">
+                        @spec.Header
+                    </DxCheckBox>
+                </div>
+            }
+            <button class="lw-chooser-reset" @onclick="() => ResetCommand.Execute(null)">Reset to default</button>
+        </div>
+    </BodyContentTemplate>
+</DxFlyout>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<ColumnSpec> Columns { get; set; } = default!;
+    [Parameter, EditorRequired] public System.Windows.Input.ICommand ResetCommand { get; set; } = default!;
+    [Parameter, EditorRequired] public string ButtonId { get; set; } = default!;
+
+    private bool _open;
+}

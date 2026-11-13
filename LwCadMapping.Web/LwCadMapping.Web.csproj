@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>LW CAD Mapping</AssemblyTitle>
+    <!-- Same id as the LwCadMapping.Web spike so its user secrets (and any ArcGIS key) carry over. -->
+    <UserSecretsId>lwcadmapping-web-7d3f1c2a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.Blazor" Version="26.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LwCad.Core\LwCad.Core.csproj" />
+    <ProjectReference Include="..\LwCad.Web.Shared\LwCad.Web.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

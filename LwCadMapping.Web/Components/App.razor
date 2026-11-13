@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>LW CAD Mapping</title>
+    @DxResourceManager.RegisterTheme(ActiveTheme)
+    @DxResourceManager.RegisterScripts()
+    <link href="@Assets["_content/LwCad.Web.Shared/lwcad.css"]" rel="stylesheet" />
+    @* ArcGIS Maps SDK for JavaScript 5.1 from the Esri CDN; cadmap.js reaches it through $arcgis.import. *@
+    <link rel="stylesheet" href="https://js.arcgis.com/5.1/esri/themes/light/main.css" />
+    <script type="module" src="https://js.arcgis.com/5.1/"></script>
+    <link href="@Assets["app.css"]" rel="stylesheet" />
+    <link href="@Assets["LwCadMapping.Web.styles.css"]" rel="stylesheet" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <ReconnectModal />
+    @* Started by hand so the connection can be made more forgiving: a dispatch map sits open
+       for hours, often in a background tab, where the default 30 s server timeout and the
+       short reconnect schedule drop the session. Keep the timeouts in step with Program.cs. *@
+    <script src="@Assets["_framework/blazor.web.js"]" autostart="false"></script>
+    <script>
+        Blazor.start({
+            circuit: {
+                reconnectionOptions: {
+                    maxRetries: 120,
+                    // Quick at first, then every 5 s (about 10 minutes in all).
+                    retryIntervalMilliseconds: n => n < 5 ? 1000 : 5000
+                },
+                configureSignalR: builder => builder.withServerTimeout(60000).withKeepAliveInterval(15000)
+            }
+        });
+    </script>
+</body>
+</html>
+
+@code {
+    // Fluent, recoloured by the CAD tokens in lwcad.css.
+    static readonly ITheme ActiveTheme = Themes.Fluent.Clone(properties => properties.Mode = ThemeMode.Light);
+}

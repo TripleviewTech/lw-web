@@ -1,0 +1,43 @@
+@* The frame every card panel opens in: a DxPopup over the dimmed board.
+   The board's own scrim (CadShell) does the dimming - and a second one over Take
+   Call / Self Initiate when a panel opens above them - so the popup draws no
+   shading of its own. Esc, outside clicks and the close button are the panel's
+   (through its view model), never the popup's, so the legacy cancel rules hold.
+
+   The content root carries id="lw-panel-{Name}": CadShell focuses the field
+   marked data-lw-autofocus inside it when the panel comes up, and the one
+   marked data-lw-refocus when a panel over it closes. *@
+
+<DxPopup Visible="@Visible"
+         ShowHeader="false" ShowFooter="false" ShowCloseButton="false"
+         CloseOnEscape="false" CloseOnOutsideClick="false"
+         ApplyBackgroundShading="false"
+         Width="@Width" MaxHeight="calc(100vh - 48px)"
+         VerticalAlignment="@(AnchorTop ? VerticalAlignment.Top : VerticalAlignment.Center)"
+         CssClass="@("lw-popup" + (AnchorTop ? " lw-popup-top" : string.Empty) + (CssClass == null ? string.Empty : " " + CssClass))"
+         ZIndex="@ZIndex">
+    <BodyContentTemplate>
+        <div id="@("lw-panel-" + Name)" class="lw-panel" role="dialog" aria-modal="true" aria-label="@Label">
+            @ChildContent
+        </div>
+    </BodyContentTemplate>
+</DxPopup>
+
+@code {
+    /// <summary>The panel's name as CadShell.TopPanel knows it (takecall, assign, unitfunction, ...).</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = default!;
+
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Width { get; set; } = "600px";
+
+    /// <summary>Anchored to the top of the board rather than centred (Unit Functions, Function Stub).</summary>
+    [Parameter] public bool AnchorTop { get; set; }
+
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Above the Take Call / Self Initiate slide-overs and their scrims.</summary>
+    [Parameter] public int ZIndex { get; set; } = 1100;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

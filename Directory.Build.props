@@ -1,0 +1,9 @@
+<Project>
+  <!-- Shared settings for the LW CAD web solution (CAD System and CAD Mapping). -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Company>Larimore Associates</Company>
+    <Product>LW CAD Web</Product>
+  </PropertyGroup>
+</Project>

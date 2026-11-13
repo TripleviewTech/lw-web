@@ -1,0 +1,82 @@
+@using LwCadMapping.Web.State
+
+@* The legacy yellow Map Selection panel and its icon bar. *@
+<section class="lw-card selection-panel">
+    <div class="panel-head">
+        <Icon Name="info" Size="17" />
+        <span class="panel-title">Map Selection</span>
+    </div>
+    <div class="icon-bar">
+        <button type="button" class="icon-btn @(S.IsCalloutOpen ? "on" : "")" disabled="@(S.SelectedGraphic is null)" title="Information - show or hide the popup" aria-label="Information" @onclick="@(() => S.SetCalloutOpen(!S.IsCalloutOpen))"><Icon Name="info" /></button>
+        <button type="button" class="icon-btn stub" disabled="@(!S.HasSelection)" title="View Call (opens the call in CAD) - not part of this app" aria-label="View call" @onclick="@(() => S.NotImplemented("View Call (opens the call in CAD)"))"><Icon Name="eye" /></button>
+        <button type="button" class="icon-btn" disabled="@(S.SelectedGraphic is null)" title="View History - calls at this location" aria-label="View history" @onclick="History"><Icon Name="history" /></button>
+        <button type="button" class="icon-btn" disabled="@(S.SelectedGraphic is null)" title="Premise - the premise record at this location" aria-label="Premise" @onclick="Premise"><Icon Name="home" /></button>
+        <button type="button" class="icon-btn stub" disabled="@(!S.HasSelection)" title="Attachments - not part of this app" aria-label="Attachments" @onclick="@(() => S.NotImplemented("Attachments"))"><Icon Name="clip" /></button>
+        <button type="button" class="icon-btn stub" disabled="@(!S.HasSelection)" title="Local Cameras - not part of this app" aria-label="Local cameras" @onclick="@(() => S.NotImplemented("Local Cameras"))"><Icon Name="camera" /></button>
+        <button type="button" class="icon-btn stub" disabled="@(!S.HasSelection)" title="Patrol - not part of this app" aria-label="Patrol" @onclick="@(() => S.NotImplemented("Patrol"))"><Icon Name="shield" /></button>
+        <button type="button" class="icon-btn stub" disabled="@(!S.HasSelection)" title="Alerts - not part of this app" aria-label="Alerts" @onclick="@(() => S.NotImplemented("Alerts"))"><Icon Name="alert" /></button>
+        @if (S.GoogleMapsUrl is { } url)
+        {
+            <a class="icon-btn" href="@url" target="_blank" rel="noopener" title="Show in Google Maps" aria-label="Show in Google Maps"><Icon Name="globe" /></a>
+        }
+        else
+        {
+            <button type="button" class="icon-btn" disabled title="Show in Google Maps" aria-label="Show in Google Maps"><Icon Name="globe" /></button>
+        }
+        <span class="divider"></span>
+        <button type="button" class="icon-btn" disabled="@(!S.HasSelection)" title="Clear Selection (Esc)" aria-label="Clear selection" @onclick="Clear"><Icon Name="x" /></button>
+    </div>
+
+    <div class="selection-body">
+        @if (!S.HasSelection)
+        {
+            <div class="empty">
+                <strong>Nothing selected</strong>
+                <span>Click a symbol on the map or a row in the monitor.</span>
+            </div>
+        }
+        else
+        {
+            <div class="sel-heading">
+                <span class="kind-chip @((S.SelectionKind ?? "").ToLowerInvariant())">@S.SelectionKind</span>
+                <span class="heading">@S.SelectionHeading</span>
+            </div>
+            <div class="fields">
+                @foreach (var f in S.SelectionFields)
+                {
+                    <div class="field">
+                        <div class="label">@f.Label</div>
+                        <div class="value @(f.Emphasis ? "em" : "")" title="@f.Value">@f.Value</div>
+                    </div>
+                }
+            </div>
+            @if (S.SelectionNotes is { } notes)
+            {
+                <div class="label">Notes</div>
+                <div class="notes">@notes</div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
+
+    private void History()
+    {
+        S.ShowHistory();
+        S.NotifyChanged();
+    }
+
+    private async Task Premise()
+    {
+        await S.ShowPremiseForSelection();
+        S.NotifyChanged();
+    }
+
+    private async Task Clear()
+    {
+        await S.SelectGraphic(null, null, false);
+        S.NotifyChanged();
+    }
+}
