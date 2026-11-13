@@ -16,7 +16,7 @@ More screenshots: `..\Docs\cad-mapping-dark.png` (GPS simulation and a route) an
 ## Run
 
 ```powershell
-cd C:\Development\Git\Mass\LW\Web
+cd C:\Development\Git\Mass\LW_Web
 $env:CadMapping__Demo = "true"; dotnet run --project LwCadMapping.Web     # demo board
 Remove-Item Env:CadMapping__Demo; dotnet run --project LwCadMapping.Web  # live CAD through La.cfg (read only)
 ```
@@ -44,7 +44,7 @@ The project uses the spike's `UserSecretsId` (`lwcadmapping-web-7d3f1c2a`), so i
 `CadMap:ArcGisApiKey` is also read as a fallback. At the time of writing, that secret store had no ArcGIS key.
 
 ```powershell
-cd C:\Development\Git\Mass\LW\Web\LwCadMapping.Web
+cd C:\Development\Git\Mass\LW_Web\LwCadMapping.Web
 dotnet user-secrets set "CadMapping:ArcGisApiKey" "<key scoped to basemaps + geocoding + routing>"
 ```
 
