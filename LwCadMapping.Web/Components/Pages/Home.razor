@@ -180,8 +180,34 @@
                     case "selection": _selectionPx = px; break;
                     default: continue;
                 }
-                await _shell.InvokeVoidAsync("saveLayout", pane, px.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                // The Focus Maps width is not kept: every visit opens it at the width GPS Tracking needs.
+                if (pane != "focus")
+                    await _shell.InvokeVoidAsync("saveLayout", pane, px.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private bool _focusFitted;
+
+    /// <summary>
+    /// Opens the Focus Maps section at the width the GPS Tracking list needs (its widest row, the
+    /// header controls and the scroll bar), measured once the units have arrived, instead of a fixed
+    /// default or a remembered wide size. Runs once per visit; dragging afterwards is the user's.
+    /// </summary>
+    private async Task FitFocusPanelAsync()
+    {
+        if (_focusFitted || _shell is null || !S.IsFocusPanelExpanded || Board.Current.IsLoading) return;
+        if (S.IsGpsTrackingExpanded && S.Units.Count == 0) return;  // wait for the rows to measure
+        try
+        {
+            var px = await _shell.InvokeAsync<double?>("focusPanelWidth");
+            if (px is not > 0) return;
+            _focusFitted = true;
+            var fitted = Math.Clamp((int)Math.Ceiling(px.Value), 200, 600);
+            if (fitted == _focusPx) return;
+            _focusPx = fitted;
             StateHasChanged();
         }
         catch (JSDisconnectedException) { }
@@ -199,7 +225,6 @@
         if (_shell is null) return;
         try
         {
-            _focusPx = await Saved("focus", _focusPx);
             _controlsPx = await Saved("controls", _controlsPx);
             _bottomPx = await Saved("bottom", _bottomPx);
             _selectionPx = await Saved("selection", _selectionPx);
@@ -233,7 +258,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (!firstRender)
+        {
+            await FitFocusPanelAsync();
+            return;
+        }
         // The board may have been published before this circuit subscribed.
         if (Board.Current.Version != S.Board.Version || S.Board.IsLoading != Board.Current.IsLoading) await S.OnBoardChanged(Board.Current);
 

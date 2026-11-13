@@ -679,6 +679,10 @@ export function destroyFocus(fid) {
     const f = focusViews.get(fid);
     if (!f) return;
     focusViews.delete(fid);
+    // A focus view shows the MAIN map (shared layers). MapView.destroy() also destroys its map, which
+    // would leave every other view - and any focus map reopened later - with nothing to draw, so
+    // detach the shared map first and destroy only the view.
+    f.view.map = null;
     f.view.container = null;
     f.view.destroy();
 }

@@ -4,7 +4,8 @@
 @implements IAsyncDisposable
 
 @* The "Focus Maps \ GPS Tracking" expander: live ArcGIS close-ups (up to MaxFocusMaps), wrapped
-   FocusMapsPerRow to a row, and the unit tracking list, which folds on its own. *@
+   FocusMapsPerRow to a row and filling their section, over the unit tracking list, with a separator
+   between them; GPS Tracking also folds on its own. *@
 @if (S.IsFocusPanelExpanded)
 {
     <section class="lw-card side-panel focus-panel">
@@ -21,60 +22,72 @@
             <button type="button" class="icon-btn" title="Collapse (Ctrl+B)" aria-label="Collapse focus maps" @onclick="Collapse"><Icon Name="chev-left" /></button>
         </div>
 
-        <div class="focus-list @(S.IsGpsTrackingExpanded ? "" : "fill")" style="--per-row:@S.FocusMapsPerRow">
-            @if (S.FocusMaps.Count == 0)
-            {
-                <div class="empty">
-                    <strong>No focus maps open</strong>
-                    <span>Pick a call or unit in the monitor and press Focus Map for a close-up that stays on it. Up to @MappingSession.MaxFocusMaps stay open; set how many sit side by side with Per row.</span>
-                </div>
-            }
-            @foreach (var fm in S.FocusMaps)
-            {
-                <div class="focus-card" @key="fm.Id">
-                    <div class="focus-head">
-                        <span class="kind-chip @fm.Kind.ToLowerInvariant()">@fm.Kind</span>
-                        <span class="focus-title">@fm.Title</span>
-                        <span class="spacer"></span>
-                        <button type="button" class="icon-btn" title="Show on Main Map" aria-label="Show on main map" @onclick="@(() => S.FocusToMain(fm))"><Icon Name="map" /></button>
-                        <button type="button" class="icon-btn" title="Close" aria-label="Close focus map" @onclick="@(() => S.CloseFocusMap(fm))"><Icon Name="x" /></button>
+        @* Focus Maps over GPS Tracking, with a DevExpress separator between them. In DxSplitter 26.1
+           the last pane (GPS) takes the remaining space, so the Focus Maps pane is sized as "all but
+           the GPS pane" and the GPS height is measured after a drag. Folded, GPS is just its header. *@
+        <DxSplitter CssClass="lw-split lw-split-focus" Orientation="Orientation.Vertical" Width="100%" SeparatorSize="8">
+            <Panes>
+                <DxSplitterPane CssClass="lw-pane-focusmaps" Size="@FocusMapsSize" SizeChanged="@(_ => MeasureGpsAsync())" MinSize="120px"
+                                AllowResize="S.IsGpsTrackingExpanded">
+                    <div class="focus-list" style="--per-row:@Columns">
+                        @if (S.FocusMaps.Count == 0)
+                        {
+                            <div class="empty">
+                                <strong>No focus maps open</strong>
+                                <span>Pick a call or unit in the monitor and press Focus Map for a close-up that stays on it. Up to @MappingSession.MaxFocusMaps stay open; set how many sit side by side with Per row.</span>
+                            </div>
+                        }
+                        @foreach (var fm in S.FocusMaps)
+                        {
+                            <div class="focus-card" @key="fm.Id">
+                                <div class="focus-head">
+                                    <span class="kind-chip @fm.Kind.ToLowerInvariant()">@fm.Kind</span>
+                                    <span class="focus-title">@fm.Title</span>
+                                    <span class="spacer"></span>
+                                    <button type="button" class="icon-btn" title="Show on Main Map" aria-label="Show on main map" @onclick="@(() => S.FocusToMain(fm))"><Icon Name="map" /></button>
+                                    <button type="button" class="icon-btn" title="Close" aria-label="Close focus map" @onclick="@(() => S.CloseFocusMap(fm))"><Icon Name="x" /></button>
+                                </div>
+                                <div class="focus-sub" title="@fm.Subtitle">@fm.Subtitle</div>
+                                <FocusMapView State="fm" Map="Map" />
+                            </div>
+                        }
                     </div>
-                    <div class="focus-sub" title="@fm.Subtitle">@fm.Subtitle</div>
-                    <FocusMapView State="fm" Map="Map" />
-                </div>
-            }
-        </div>
-
-        <div class="gps-head">
-            <button type="button" class="icon-btn" title="@(S.IsGpsTrackingExpanded ? "Fold GPS Tracking - the focus maps take the panel" : "Show GPS Tracking")"
-                    aria-label="@(S.IsGpsTrackingExpanded ? "Fold GPS tracking" : "Show GPS tracking")" aria-expanded="@(S.IsGpsTrackingExpanded ? "true" : "false")"
-                    @onclick="ToggleGps"><Icon Name="@(S.IsGpsTrackingExpanded ? "chev-down" : "chev-up")" /></button>
-            <Icon Name="gps" />
-            <span class="panel-title small">GPS Tracking</span>
-            <span class="spacer"></span>
-            <button type="button" class="pill-btn @(S.IsGpsTracking ? "on" : "")"
-                    title="@(S.CanSimulateGps ? "Show Unit Location - simulated (Ctrl+G)" : "No AVL feed in Lowell (ADR-007)")"
-                    @onclick="@(() => S.SetGpsTracking(!S.IsGpsTracking))">
-                @(S.IsGpsTracking ? "Tracking (simulated)" : S.CanSimulateGps ? "Track" : "No AVL")
-            </button>
-        </div>
-        @if (S.IsGpsTrackingExpanded)
-        {
-        <div class="gps-list">
-            @foreach (var u in S.Units)
-            {
-                <div class="gps-row @(S.SelectedUnit?.UnitNo == u.UnitNo ? "selected" : "")" @key="u.UnitNo"
-                     @onclick="@(() => S.SelectRow(u))" @ondblclick="@(() => S.OpenFocusMap(u))">
-                    <span class="dot ag-@u.Agency"></span>
-                    <span class="unit">@u.UnitNo</span>
-                    <span class="st">@u.StatusText</span>
-                    <span class="spd">@(S.IsGpsTracking ? $"{S.SpeedOf(u):0} mph" : "")</span>
-                    <span class="fix">@S.LastFixText(u)</span>
-                </div>
-            }
-        </div>
-        }
-    </section>
+                </DxSplitterPane>
+                <DxSplitterPane CssClass="lw-pane-gps">
+                    <div class="gps-section">
+                        <div class="gps-head">
+                            <button type="button" class="icon-btn" title="@(S.IsGpsTrackingExpanded ? "Fold GPS Tracking - the focus maps take the panel" : "Show GPS Tracking")"
+                                    aria-label="@(S.IsGpsTrackingExpanded ? "Fold GPS tracking" : "Show GPS tracking")" aria-expanded="@(S.IsGpsTrackingExpanded ? "true" : "false")"
+                                    @onclick="ToggleGps"><Icon Name="@(S.IsGpsTrackingExpanded ? "chev-down" : "chev-up")" /></button>
+                            <Icon Name="gps" />
+                            <span class="panel-title small">GPS Tracking</span>
+                            <span class="spacer"></span>
+                            <button type="button" class="pill-btn @(S.IsGpsTracking ? "on" : "")"
+                                    title="@(S.CanSimulateGps ? "Show Unit Location - simulated (Ctrl+G)" : "No AVL feed in Lowell (ADR-007)")"
+                                    @onclick="@(() => S.SetGpsTracking(!S.IsGpsTracking))">
+                                @(S.IsGpsTracking ? "Tracking (simulated)" : S.CanSimulateGps ? "Track" : "No AVL")
+                            </button>
+                        </div>
+                        @if (S.IsGpsTrackingExpanded)
+                        {
+                            <div class="gps-list">
+                                @foreach (var u in S.Units)
+                                {
+                                    <div class="gps-row @(S.SelectedUnit?.UnitNo == u.UnitNo ? "selected" : "")" @key="u.UnitNo"
+                                         @onclick="@(() => S.SelectRow(u))" @ondblclick="@(() => S.OpenFocusMap(u))">
+                                        <span class="dot ag-@u.Agency"></span>
+                                        <span class="unit">@u.UnitNo</span>
+                                        <span class="st">@u.StatusText</span>
+                                        <span class="spd">@(S.IsGpsTracking ? $"{S.SpeedOf(u):0} mph" : "")</span>
+                                        <span class="fix">@S.LastFixText(u)</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </DxSplitterPane>
+            </Panes>
+        </DxSplitter>    </section>
 }
 else
 {
@@ -89,6 +102,47 @@ else
     [Parameter] public CadMap? Map { get; set; }
 
     private IJSObjectReference? _shell;
+
+    // GPS Tracking pane height in px once the user has dragged the separator; until then the focus
+    // maps get 60% of the panel. Folded, the GPS pane is only its header (GpsHeadPx).
+    private const int Gap = 8;
+    private const int GpsHeadPx = 42;
+    private int? _gpsPx;
+    private bool _nudge;   // re-sends the same Size so DxSplitter drops a drag (see Home.razor)
+
+    /// <summary>Columns in use: the Per row choice, but never more than the maps open, so fewer maps fill the width.</summary>
+    private int Columns => Math.Max(1, Math.Min(S.FocusMapsPerRow, Math.Max(1, S.FocusMaps.Count)));
+
+    private string FocusMapsSize
+    {
+        get
+        {
+            var tail = _nudge ? " + 0px" : "";
+            if (!S.IsGpsTrackingExpanded) return $"calc(100% - {GpsHeadPx + Gap}px{tail})";
+            return _gpsPx is int px ? $"calc(100% - {px + Gap}px{tail})" : $"calc(60% - {Gap / 2}px{tail})";
+        }
+    }
+
+    /// <summary>After a drag: keep the GPS pane's height, or snap a folded GPS pane back to its header.</summary>
+    private async Task MeasureGpsAsync()
+    {
+        if (_shell is null) return;
+        try
+        {
+            var size = await _shell.InvokeAsync<double[]?>("paneSize", ".lw-pane-gps");
+            if (size is not { Length: > 1 }) return;
+            var px = (int)Math.Round(size[1]);
+            if (!S.IsGpsTrackingExpanded)
+            {
+                if (Math.Abs(px - GpsHeadPx) > 2) { _nudge = !_nudge; StateHasChanged(); }
+                return;
+            }
+            _gpsPx = Math.Max(GpsHeadPx + 40, px);
+            await _shell.InvokeVoidAsync("saveLayout", "gpsHeight", _gpsPx.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException) { }
+    }
 
     private void Collapse()
     {
@@ -119,6 +173,8 @@ else
             _shell = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shell.js");
             var perRow = await _shell.InvokeAsync<string?>("loadLayout", "focusPerRow");
             var gps = await _shell.InvokeAsync<string?>("loadLayout", "gpsExpanded");
+            var gpsHeight = await _shell.InvokeAsync<string?>("loadLayout", "gpsHeight");
+            if (int.TryParse(gpsHeight, out var gh) && gh > GpsHeadPx) { _gpsPx = gh; StateHasChanged(); }
             var changed = false;
             if (int.TryParse(perRow, out var n) && n != S.FocusMapsPerRow) { S.FocusMapsPerRow = n; changed = true; }
             if (gps is "0" or "1" && (gps == "1") != S.IsGpsTrackingExpanded) { S.IsGpsTrackingExpanded = gps == "1"; changed = true; }
