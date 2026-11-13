@@ -30,6 +30,7 @@ needs internet access to `js.arcgis.com` (the SDK) and to the basemap tiles.
 |---|---|
 | `Demo` | `true` sets `CadHost.ForceDemoBoard`, so the app uses the demo board and skips the database. |
 | `LaCfgPath` | Sets `LaGetConfig.OverridePath`. `appsettings.Development.json` points at `C:\Development\Git\Mass\LW\Development\La.cfg`. |
+| `ConnectionStrings:LwCad` (top level, not in `CadMapping`) | When set, the CAD database connection instead of La.cfg's `[DATABASE]` section (`LaGetConfig.ConnectionStringOverride`). Azure app setting / Key Vault, or user secrets locally - never appsettings. A read-only login is enough. The spike's `ConnectionStrings:Cad` secret is deliberately **not** used. |
 | `AgencyId`, `Extents` | The initial and full extent, as `[xmin, ymin, xmax, ymax]` in WGS84. LW is `[-71.382294, 42.601802, -71.231232, 42.669491]`. |
 | `ArcGisApiKey` | **Secret. Set it only in user secrets or an environment variable.** It turns on ArcGIS basemap styles, geocoding and routing. |
 | `GeocodeUrl`, `RouteUrl` | The ArcGIS World geocoder and route services. |

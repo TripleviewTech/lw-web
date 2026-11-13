@@ -36,6 +36,8 @@ The session values go through the WPF parser (`CadSession.FromArgs`), so the `LW
 
 `appsettings.Development.json` sets `"LaCfgPath": "C:\\Development\\Git\\Mass\\LW\\Development\\La.cfg"` with `"Demo": false`, so a development run behaves like production. That La.cfg names the local development Lowell database (CHANDLER-NB2\SQL2022); nothing in this solution points at live data. Run with `--demo` (or `CadSystem__Demo=true`) for the in-memory demo board. No credentials are kept in appsettings; they stay in La.cfg.
 
+**Connection string instead of La.cfg (2026-11-13).** `ConnectionStrings:LwCad`, when set, replaces La.cfg's `[DATABASE]` section (`LaGetConfig.ConnectionStringOverride`); a La.cfg, if one is found, still supplies the agency / print-title / default sections. Set it as an Azure app setting or connection string (Key Vault reference for the password) on a server, and with user secrets on a workstation (`dotnet user-secrets set "ConnectionStrings:LwCad" "<connection string>" --project LwCadSystem.Web`); never in appsettings. The start-up log names the server and database only.
+
 These settings are process-wide in Core, as they were per process in WPF. Every circuit on one server uses the same La.cfg, employee and session. There is no logon yet, the same as WPF.
 
 ### Legacy programs

@@ -14,6 +14,8 @@ builder.Services.PostConfigure<CadMappingOptions>(o =>
         o.ArcGisApiKey = builder.Configuration["CadMap:ArcGisApiKey"] ?? "";
     if (o.Extents.Count == 0)
         o.Extents["LW"] = [-71.382294, 42.601802, -71.231232, 42.669491];
+    // ConnectionStrings:LwCad (not the spike's ConnectionStrings:Cad) replaces La.cfg's [DATABASE].
+    o.ConnectionString = builder.Configuration.GetConnectionString("LwCad") ?? "";
 });
 
 builder.Services.AddDevExpressBlazor(options => options.SizeMode = DevExpress.Blazor.SizeMode.Small);

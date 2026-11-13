@@ -14,6 +14,13 @@ public sealed class CadMappingOptions
     /// <summary>Full path of La.cfg (sets LaGetConfig.OverridePath). Empty: Core's default search.</summary>
     public string LaCfgPath { get; set; } = "";
 
+    /// <summary>
+    /// The CAD database connection, from <c>ConnectionStrings:LwCad</c> (Azure app setting or user
+    /// secret - never appsettings). When set it replaces La.cfg's [DATABASE] section. Filled in
+    /// Program.cs; not bound from the CadMapping section.
+    /// </summary>
+    public string ConnectionString { get; set; } = "";
+
     /// <summary>Picks the initial extent from <see cref="Extents"/>.</summary>
     public string AgencyId { get; set; } = "LW";
 

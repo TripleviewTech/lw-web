@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyTitle>LW CAD System</AssemblyTitle>
+    <!-- Local secrets (e.g. ConnectionStrings:LwCad) - kept outside the repo. -->
+    <UserSecretsId>lwcadsystem-web-5b2e9d41</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

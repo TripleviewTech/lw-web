@@ -10,6 +10,12 @@ namespace LwCadSystem.Web.Services;
 /// </summary>
 public static class CadStartup
 {
+    /// <summary>
+    /// ConnectionStrings:LwCad - when set, the CAD database connection (instead of La.cfg's
+    /// [DATABASE] section). Azure: an app setting or connection string; locally: user secrets.
+    /// </summary>
+    public const string ConnectionStringName = "LwCad";
+
     /// <summary>The WPF switches. Each takes a value except --demo.</summary>
     private static readonly Dictionary<string, string> Switches = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -67,10 +73,12 @@ public static class CadStartup
     /// Applies the options to the domain. Called once, before the first circuit:
     /// these are process-wide in the domain, as they were per process in WPF.
     /// </summary>
-    public static void Apply(CadSystemOptions options, ILogger logger)
+    public static void Apply(CadSystemOptions options, string? connectionString, ILogger logger)
     {
         CadHost.ForceDemoBoard = options.Demo;
         LaConfig.LaGetConfig.OverridePath = string.IsNullOrWhiteSpace(options.LaCfgPath) ? null : options.LaCfgPath.Trim();
+        // ConnectionStrings:LwCad replaces La.cfg's [DATABASE] section.
+        LaConfig.LaGetConfig.ConnectionStringOverride = string.IsNullOrWhiteSpace(connectionString) ? null : connectionString;
 
         // CadSession.FromArgs is the WPF parser (it also falls back to the LWCAD_*
         // environment variables); feeding it the configured values keeps one rule.
@@ -97,6 +105,13 @@ public static class CadStartup
         if (options.Demo)
         {
             logger.LogInformation("CAD System: demo mode is on - the demo board is used and nothing is written.");
+        }
+        else if (LaConfig.LaGetConfig.HasConnectionStringOverride)
+        {
+            var db = new LaConfig.LaGetConfig();
+            db.GetConnectString();
+            logger.LogWarning("CAD System: live mode. Database {Database} on {Server} from ConnectionStrings:{Name}. The console reads AND WRITES the CAD tables.",
+                db.DatabaseName, db.ServerName, ConnectionStringName);
         }
         else
         {

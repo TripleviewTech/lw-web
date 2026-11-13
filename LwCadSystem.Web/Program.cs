@@ -32,7 +32,7 @@ builder.Services.AddRazorComponents()
 var app = builder.Build();
 
 var cadOptions = builder.Configuration.GetSection(CadSystemOptions.Section).Get<CadSystemOptions>() ?? new CadSystemOptions();
-CadStartup.Apply(cadOptions, app.Logger);
+CadStartup.Apply(cadOptions, builder.Configuration.GetConnectionString(CadStartup.ConnectionStringName), app.Logger);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

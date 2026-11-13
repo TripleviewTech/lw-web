@@ -30,6 +30,17 @@ namespace LaConfig
         /// </summary>
         public static string OverridePath { get; set; }
 
+        /// <summary>
+        /// A full SQL Server connection string that replaces the [DATABASE] section of La.cfg
+        /// (set from the ConnectionStrings:LwCad setting, e.g. an Azure app setting or user
+        /// secret). La.cfg is then optional: when one is found its other sections (agency,
+        /// print title, defaults) are still read. Never logged.
+        /// </summary>
+        public static string ConnectionStringOverride { get; set; }
+
+        /// <summary>True when <see cref="ConnectionStringOverride"/> is set.</summary>
+        public static bool HasConnectionStringOverride => !string.IsNullOrWhiteSpace(ConnectionStringOverride);
+
         public LaGetConfig() : this(DefaultFileName)
         {
         }
@@ -110,13 +121,45 @@ namespace LaConfig
         private void Read()
         {
             var path = ResolveConfigPath(FileName);
+            var found = File.Exists(path);
 
-            if (!File.Exists(path))
+            if (HasConnectionStringOverride)
+            {
+                // The database comes from the setting; La.cfg, if any, still supplies the rest.
+                if (found) ReadFile(path);
+                UseConnectionStringOverride();
+                return;
+            }
+
+            if (!found)
             {
                 ErrMsg = "Could not find " + path;
                 return;
             }
 
+            ReadFile(path);
+
+            _connectString =
+                "Server=" + ServerName +
+                ";Database=" + DatabaseName +
+                ";User ID=" + UserIdName +
+                ";Password=" + _password +
+                ";MultiSubnetFailover=True;Encrypt=True;TrustServerCertificate=True";
+        }
+
+        private void UseConnectionStringOverride()
+        {
+            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(ConnectionStringOverride.Trim());
+            ServerName = builder.DataSource;
+            DatabaseName = builder.InitialCatalog;
+            UserIdName = builder.UserID;
+            _password = string.Empty;   // kept only inside the connection string
+            _connectString = builder.ConnectionString;
+            ErrMsg = string.Empty;
+        }
+
+        private void ReadFile(string path)
+        {
             var section = string.Empty;
 
             foreach (var raw in File.ReadLines(path))
@@ -143,13 +186,6 @@ namespace LaConfig
                     case "[Imaging]": ReadImaging(line); break;
                 }
             }
-
-            _connectString =
-                "Server=" + ServerName +
-                ";Database=" + DatabaseName +
-                ";User ID=" + UserIdName +
-                ";Password=" + _password +
-                ";MultiSubnetFailover=True;Encrypt=True;TrustServerCertificate=True";
         }
 
         private void ReadAgency(string line)

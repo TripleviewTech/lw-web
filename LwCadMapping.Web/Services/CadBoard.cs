@@ -46,6 +46,7 @@ public sealed class CadBoard(
         var o = options.Value;
         CadHost.ForceDemoBoard = o.Demo;
         if (!string.IsNullOrWhiteSpace(o.LaCfgPath)) LaGetConfig.OverridePath = o.LaCfgPath;
+        LaGetConfig.ConnectionStringOverride = string.IsNullOrWhiteSpace(o.ConnectionString) ? null : o.ConnectionString;
 
         // The factory probes the database (up to 5 s) - keep it off the start-up path.
         await Task.Yield();
