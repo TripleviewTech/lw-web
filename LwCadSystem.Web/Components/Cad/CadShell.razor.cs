@@ -24,6 +24,7 @@ public partial class CadShell : ComponentBase, IAsyncDisposable
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private IDialogService Dialogs { get; set; } = default!;
     [Inject] private IThemeChangeService ThemeChange { get; set; } = default!;
+    [Inject] private Microsoft.Extensions.Options.IOptions<LwCadSystem.Web.Services.CadSystemOptions> Options { get; set; } = default!;
 
     public ShellViewModel Shell => Console.Shell;
 
@@ -75,6 +76,7 @@ public partial class CadShell : ComponentBase, IAsyncDisposable
 
         Shell.ConfirmAsync = ConfirmAsync;
         Shell.CopyToClipboard = text => _ = CopyAsync(text);
+        if (!string.IsNullOrWhiteSpace(Options.Value.MappingUrl)) Shell.OpenMapping = OpenMapping;
         Shell.ThemeChanged += OnThemeChanged;
 
         Observe(Shell);
@@ -281,6 +283,35 @@ public partial class CadShell : ComponentBase, IAsyncDisposable
 
     private Task SaveLayoutAsync(MonitorLayout layout) =>
         SafeJs("saveLayout", "lwcad.layout." + layout.Key, layout.Serialize());
+
+    /// <summary>
+    /// Opens CAD Mapping on the selected call / unit: <c>{MappingUrl}?event=2026-0000002&amp;unit=C206</c>.
+    /// The JS call reaches the browser within the click's user activation, so pop-up blockers allow
+    /// it; if one refuses anyway, the status line says so when the answer comes back.
+    /// </summary>
+    private bool OpenMapping(LwCadSystemUX.Models.CadCall? call, LwCadSystemUX.Models.CadUnit? unit)
+    {
+        if (_module == null) return false;
+
+        var url = MappingUrlFor(call, unit);
+        _ = _module.InvokeAsync<bool>("openMapping", url).AsTask().ContinueWith(t =>
+        {
+            if (t.IsCompletedSuccessfully && !t.Result)
+            {
+                _ = InvokeAsync(() => Shell.SetStatus("The browser blocked the CAD Mapping window. Allow pop-ups for this site, then press Map again."));
+            }
+        }, TaskScheduler.Default);
+        return true;
+    }
+
+    private string MappingUrlFor(LwCadSystemUX.Models.CadCall? call, LwCadSystemUX.Models.CadUnit? unit)
+    {
+        var url = Options.Value.MappingUrl!.TrimEnd('/') + "/";
+        var query = new List<string>();
+        if (call != null && !string.IsNullOrWhiteSpace(call.EventNo)) query.Add("event=" + Uri.EscapeDataString(call.EventNo.Trim()));
+        if (unit != null && !string.IsNullOrWhiteSpace(unit.UnitNo)) query.Add("unit=" + Uri.EscapeDataString(unit.UnitNo.Trim()));
+        return query.Count == 0 ? url : url + "?" + string.Join("&", query);
+    }
 
     private async Task CopyAsync(string text)
     {

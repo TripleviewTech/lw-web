@@ -32,4 +32,10 @@ public sealed class CadSystemOptions
 
     /// <summary>Security level 0-9, instead of DAT1_ACC_LEVEL (WPF <c>--sec</c>). 0 sees every key.</summary>
     public int? SecurityLevel { get; set; }
+
+    /// <summary>
+    /// Address of the web CAD Mapping app (LwCadMapping.Web) that the Map button opens, e.g.
+    /// <c>https://localhost:7195/</c>. Blank: the Map button falls back to the legacy program or its notes.
+    /// </summary>
+    public string? MappingUrl { get; set; }
 }

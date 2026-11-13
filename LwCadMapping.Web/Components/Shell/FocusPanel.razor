@@ -1,7 +1,10 @@
 @using LwCadMapping.Web.State
 @using LwCadMapping.Web.Components.Map
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-@* The "Focus Maps \ GPS Tracking" expander: up to four live ArcGIS close-ups, and the unit tracking list. *@
+@* The "Focus Maps \ GPS Tracking" expander: live ArcGIS close-ups (up to MaxFocusMaps), wrapped
+   FocusMapsPerRow to a row, and the unit tracking list, which folds on its own. *@
 @if (S.IsFocusPanelExpanded)
 {
     <section class="lw-card side-panel focus-panel">
@@ -10,15 +13,20 @@
             <span class="panel-title">Focus Maps</span>
             <span class="count">@S.FocusMaps.Count</span>
             <span class="spacer"></span>
+            <label class="per-row" title="Focus maps per row - the maps wrap onto further rows">
+                <span>Per row</span>
+                <DxComboBox Data="@MappingSession.FocusMapsPerRowChoices" Value="@S.FocusMapsPerRow" ValueChanged="@((int v) => SetPerRow(v))"
+                            CssClass="per-row-combo" SizeMode="SizeMode.Small" />
+            </label>
             <button type="button" class="icon-btn" title="Collapse (Ctrl+B)" aria-label="Collapse focus maps" @onclick="Collapse"><Icon Name="chev-left" /></button>
         </div>
 
-        <div class="focus-list">
+        <div class="focus-list @(S.IsGpsTrackingExpanded ? "" : "fill")" style="--per-row:@S.FocusMapsPerRow">
             @if (S.FocusMaps.Count == 0)
             {
                 <div class="empty">
                     <strong>No focus maps open</strong>
-                    <span>Pick a call or unit in the monitor and press Focus Map for a close-up that stays on it. Up to four stay open.</span>
+                    <span>Pick a call or unit in the monitor and press Focus Map for a close-up that stays on it. Up to @MappingSession.MaxFocusMaps stay open; set how many sit side by side with Per row.</span>
                 </div>
             }
             @foreach (var fm in S.FocusMaps)
@@ -38,6 +46,9 @@
         </div>
 
         <div class="gps-head">
+            <button type="button" class="icon-btn" title="@(S.IsGpsTrackingExpanded ? "Fold GPS Tracking - the focus maps take the panel" : "Show GPS Tracking")"
+                    aria-label="@(S.IsGpsTrackingExpanded ? "Fold GPS tracking" : "Show GPS tracking")" aria-expanded="@(S.IsGpsTrackingExpanded ? "true" : "false")"
+                    @onclick="ToggleGps"><Icon Name="@(S.IsGpsTrackingExpanded ? "chev-down" : "chev-up")" /></button>
             <Icon Name="gps" />
             <span class="panel-title small">GPS Tracking</span>
             <span class="spacer"></span>
@@ -47,6 +58,8 @@
                 @(S.IsGpsTracking ? "Tracking (simulated)" : S.CanSimulateGps ? "Track" : "No AVL")
             </button>
         </div>
+        @if (S.IsGpsTrackingExpanded)
+        {
         <div class="gps-list">
             @foreach (var u in S.Units)
             {
@@ -60,6 +73,7 @@
                 </div>
             }
         </div>
+        }
     </section>
 }
 else
@@ -74,9 +88,56 @@ else
     [Parameter, EditorRequired] public MappingSession S { get; set; } = default!;
     [Parameter] public CadMap? Map { get; set; }
 
+    private IJSObjectReference? _shell;
+
     private void Collapse()
     {
         S.IsFocusPanelExpanded = !S.IsFocusPanelExpanded;
         S.NotifyChanged();
+    }
+
+    private async Task SetPerRow(int value)
+    {
+        S.FocusMapsPerRow = value;
+        S.NotifyChanged();
+        await Save("focusPerRow", S.FocusMapsPerRow.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    private async Task ToggleGps()
+    {
+        S.IsGpsTrackingExpanded = !S.IsGpsTrackingExpanded;
+        S.NotifyChanged();
+        await Save("gpsExpanded", S.IsGpsTrackingExpanded ? "1" : "0");
+    }
+
+    // Both choices are kept in this browser, beside the splitter sizes (shell.js).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _shell = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shell.js");
+            var perRow = await _shell.InvokeAsync<string?>("loadLayout", "focusPerRow");
+            var gps = await _shell.InvokeAsync<string?>("loadLayout", "gpsExpanded");
+            var changed = false;
+            if (int.TryParse(perRow, out var n) && n != S.FocusMapsPerRow) { S.FocusMapsPerRow = n; changed = true; }
+            if (gps is "0" or "1" && (gps == "1") != S.IsGpsTrackingExpanded) { S.IsGpsTrackingExpanded = gps == "1"; changed = true; }
+            if (changed) S.NotifyChanged();
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task Save(string key, string value)
+    {
+        if (_shell is null) return;
+        try { await _shell.InvokeVoidAsync("saveLayout", key, value); }
+        catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_shell is null) return;
+        try { await _shell.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
     }
 }

@@ -47,3 +47,19 @@ export function setTheme(dark) {
 export function prefersDark() {
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
+
+// Splitter pane sizes, kept in this browser only (Home.razor, DxSplitter).
+export function loadLayout(key) {
+    try { return localStorage.getItem("lwcadmap.layout." + key); } catch { return null; }
+}
+
+export function saveLayout(key, value) {
+    try { localStorage.setItem("lwcadmap.layout." + key, value); } catch { }
+}
+// The rendered size of a splitter pane, [width, height], or null.
+export function paneSize(selector) {
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return [r.width, r.height];
+}

@@ -831,6 +831,22 @@ namespace LwCadSystemUX.ViewModels
                     return;
             }
 
+            // CAD Mapping is a web app now: the host opens it on the selected call (and unit),
+            // as btn_Map started LwCadMapping.exe with the call's link string. Not blocked by an
+            // open panel - the map opens in its own tab and leaves the panel as it is.
+            if (OpenMapping != null && IsMappingFunction(function, slot))
+            {
+                var call = SelectedCall;
+                var unit = Units.SelectedUnit;
+                var opened = OpenMapping(call, unit);
+                SetStatus(!opened
+                    ? "The browser blocked the CAD Mapping window. Allow pop-ups for this site, then press Map again."
+                    : call != null
+                        ? "CAD Mapping opened on event " + call.EventNo + "."
+                        : unit != null ? "CAD Mapping opened on unit " + unit.UnitNo + "." : "CAD Mapping opened.");
+                return;
+            }
+
             var title = slot != null && !string.IsNullOrWhiteSpace(slot.Literal) ? slot.Literal : function.Title;
             if (BlockedByModal(title)) return;
 
@@ -844,6 +860,26 @@ namespace LwCadSystemUX.ViewModels
             }
 
             FunctionStub.Open(function, slot);
+        }
+
+        /// <summary>
+        /// Opens the web CAD Mapping app on (call, unit) - either may be null - and returns false
+        /// when the browser refused the window. Set per user by the web host; when it is null the
+        /// Map function falls back to the legacy LwCadMapping program or its notes.
+        /// </summary>
+        public Func<CadCall, CadUnit, bool> OpenMapping { get; set; }
+
+        /// <summary>The catalogue's map function (CADMAPPING / CADMAPPINGGDB), however the key names it.</summary>
+        private static bool IsMappingFunction(CadFunctionInfo function, KeySlot slot)
+        {
+            static bool IsMap(string id)
+            {
+                var name = KeymapLoader.NormalizeProgramId(id ?? string.Empty);
+                return name.EndsWith("CADMAPPING", StringComparison.OrdinalIgnoreCase) ||
+                       name.EndsWith("CADMAPPINGGDB", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return function.Programs.Any(IsMap) || (slot != null && IsMap(slot.ProgramId));
         }
 
         /// <summary>The key's program, or the catalogued one with this agency's prefix, when installed.</summary>

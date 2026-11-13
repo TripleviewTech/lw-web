@@ -308,6 +308,19 @@ export function rect(selector) {
     return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
 }
 
+// CAD Mapping opens in one named tab, which later presses of Map reuse (navigating it to the
+// newly selected call). False when the browser's pop-up blocker refused the window.
+export function openMapping(url) {
+    try {
+        const win = window.open(url, "lwcad-mapping");
+        if (!win) return false;
+        win.focus();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export async function copyText(text) {
     try {
         await navigator.clipboard.writeText(text);

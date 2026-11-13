@@ -79,10 +79,82 @@ public sealed class MappingSession : IDisposable
         await PushGraphics();
         if (!HasApiKey)
             Status = "No ArcGIS API key - OpenStreetMap base map, demo geography for searching and locating calls, straight-line routes.";
+        await TryOpenStartTarget();
         NotifyChanged();
     }
 
     public void DetachMap() => _map = null;
+
+    // ============================================================ start-up target
+
+    private string? _startEvent;
+    private string? _startUnit;
+
+    /// <summary>
+    /// The call (and/or unit) CAD asked the map to open on: <c>/?event=2026-0000002&amp;unit=C206</c>,
+    /// the web form of LwCadMapping's <c>--event</c> switch. Applied once the map and the board
+    /// are both ready, then forgotten.
+    /// </summary>
+    public void SetStartTarget(string? eventNo, string? unitNo)
+    {
+        _startEvent = string.IsNullOrWhiteSpace(eventNo) ? null : eventNo.Trim();
+        _startUnit = string.IsNullOrWhiteSpace(unitNo) ? null : unitNo.Trim();
+    }
+
+    private async Task TryOpenStartTarget()
+    {
+        if ((_startEvent is null && _startUnit is null) || _map is null || Board.IsLoading) return;
+
+        var eventNo = _startEvent;
+        var unitNo = _startUnit;
+        _startEvent = _startUnit = null;
+
+        object? row = null;
+        if (eventNo is not null)
+        {
+            row = Board.Calls.FirstOrDefault(c => SameEvent(c.EventNo, eventNo));
+            if (row is null)
+            {
+                Status = $"Opened from CAD on event {eventNo}, which is not on the map board (closed, or not yet located).";
+            }
+        }
+        if (row is null && unitNo is not null)
+        {
+            row = Board.Units.FirstOrDefault(u => string.Equals(u.UnitNo, unitNo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (row is null)
+        {
+            NotifyChanged();
+            return;
+        }
+
+        MonitorTab = row is MapUnit ? "Units" : row is MapCall { IsPending: true } ? "Pending" : "Active";
+        await ShowOnMainMap(row);
+        if (FindGraphicFor(row) is not null)
+        {
+            Status = row is MapCall c
+                ? $"Opened from CAD on event {c.EventNo} - {c.CallType} at {c.Location}."
+                : $"Opened from CAD on unit {((MapUnit)row).UnitNo}.";
+        }
+        NotifyChanged();
+    }
+
+    /// <summary>"2026-0000002", "P/2026-2" and "2026-2" all name the same event.</summary>
+    private static bool SameEvent(string a, string b)
+    {
+        static string Norm(string s)
+        {
+            s = s.Trim();
+            var slash = s.IndexOf('/');
+            if (slash >= 0) s = s[(slash + 1)..];
+            var dash = s.IndexOf('-');
+            if (dash < 0) return s.TrimStart('0');
+            return s[..dash] + "-" + s[(dash + 1)..].TrimStart('0');
+        }
+
+        return string.Equals(Norm(a), Norm(b), StringComparison.OrdinalIgnoreCase);
+    }
 
     // ==================================================================== data
 
@@ -110,6 +182,7 @@ public sealed class MappingSession : IDisposable
             if (g is not null) fm.Centre = g.Location;
         }
         await PushGraphics();
+        await TryOpenStartTarget();
         NotifyChanged();
     }
 
@@ -712,7 +785,29 @@ public sealed class MappingSession : IDisposable
     public List<FocusMapState> FocusMaps { get; } = new();
     private int _focusSeq;
 
-    /// <summary>Legacy Show Focus Map: a docked close-up that stays on its call or follows its unit. Up to four.</summary>
+    /// <summary>
+    /// Most focus maps open at once. The legacy docked four; supervisors on wide monitors watch
+    /// more units, and the panel now wraps them (FocusMapsPerRow), so the limit is two full rows.
+    /// The oldest closes when one more is opened.
+    /// </summary>
+    public const int MaxFocusMaps = 10;
+
+    /// <summary>The choices for focus maps per row (the Focus Maps header combo box).</summary>
+    public static IReadOnlyList<int> FocusMapsPerRowChoices { get; } = [1, 2, 3, 4, 5];
+
+    private int _focusMapsPerRow = 1;
+
+    /// <summary>How many focus maps sit side by side before wrapping: 1 to 5.</summary>
+    public int FocusMapsPerRow
+    {
+        get => _focusMapsPerRow;
+        set => _focusMapsPerRow = Math.Clamp(value, 1, 5);
+    }
+
+    /// <summary>The GPS Tracking list under the focus maps; folding it gives the maps the whole panel.</summary>
+    public bool IsGpsTrackingExpanded { get; set; } = true;
+
+    /// <summary>Legacy Show Focus Map: a docked close-up that stays on its call or follows its unit.</summary>
     public void OpenFocusMap(object? row = null)
     {
         row ??= CurrentRow;
@@ -735,7 +830,7 @@ public sealed class MappingSession : IDisposable
 
         FocusMaps.RemoveAll(x => x.TargetId == fm.TargetId);
         FocusMaps.Insert(0, fm);
-        while (FocusMaps.Count > 4) FocusMaps.RemoveAt(FocusMaps.Count - 1);
+        while (FocusMaps.Count > MaxFocusMaps) FocusMaps.RemoveAt(FocusMaps.Count - 1);
         IsFocusPanelExpanded = true;
         Status = $"Focus map opened on {fm.Title}.";
         NotifyChanged();

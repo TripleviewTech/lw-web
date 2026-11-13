@@ -15,51 +15,77 @@
     <TopBar S="S" OnToggleTheme="ToggleTheme" OnExit="Exit" />
     <MapToolbar S="S" />
 
-    <main class="lw-main @(S.IsFocusPanelExpanded ? "" : "focus-collapsed") @(S.IsControlsPanelExpanded ? "" : "controls-collapsed")">
-        <FocusPanel S="S" Map="_map" />
+    @* The work area is DevExpress splitters: map row over monitor row, and within each row
+       the panels side by side. Drag a separator to share the space differently; the sizes are
+       kept in this browser. In DxSplitter 26.1 the LAST pane of a splitter always takes the
+       remaining space and ignores Size, so the panes before it are sized as "the rest minus
+       the last pane" (calc), and the last pane's size is measured after a drag. A folded side
+       panel keeps its 38px rail. *@
+    <DxSplitter CssClass="lw-split lw-split-rows" Orientation="Orientation.Vertical" Width="100%" SeparatorSize="8">
+        <Panes>
+            <DxSplitterPane CssClass="lw-pane-top" Size="@($"calc(100% - {_bottomPx + Gap}px)")" SizeChanged="@(_ => MeasureAsync("bottom"))" MinSize="200px">
+                <DxSplitter CssClass="lw-split lw-split-cols" Width="100%" Height="100%" SeparatorSize="8">
+                    <Panes>
+                        <DxSplitterPane CssClass="lw-pane-focus" Size="@(_nudge ? $"calc({FocusPx}px + 0px)" : $"{FocusPx}px")" SizeChanged="@(_ => MeasureAsync("focus"))"
+                                        MinSize="@(S.IsFocusPanelExpanded ? "200px" : $"{Folded}px")" MaxSize="45%" AllowResize="S.IsFocusPanelExpanded">
+                            <FocusPanel S="S" Map="_map" />
+                        </DxSplitterPane>
+                        <DxSplitterPane CssClass="lw-pane-map" Size="@($"calc(100% - {FocusPx + ControlsPx + 2 * Gap}px{Nudge})")" SizeChanged="@(_ => MeasureAsync("focus", "controls"))" MinSize="320px">
+                    <section class="lw-card map-card @(S.IsMarking ? "marking" : "")">
+                        <CadMap @ref="_map" Session="S" />
 
-        <section class="lw-card map-card @(S.IsMarking ? "marking" : "")">
-            <CadMap @ref="_map" Session="S" />
+                        <div class="map-chrome">
+                            <div class="zoom-group">
+                                <button type="button" title="Zoom in (+)" aria-label="Zoom in" @onclick="@(() => S.ZoomBy(1))"><Icon Name="plus" /></button>
+                                <button type="button" title="Zoom out (-)" aria-label="Zoom out" @onclick="@(() => S.ZoomBy(-1))"><Icon Name="minus" /></button>
+                            </div>
+                            <button type="button" class="chrome-btn" title="Reset Map - back to the zoom extent (Ctrl+R)" aria-label="Reset map" @onclick="@(() => S.ResetMap())"><Icon Name="home" /></button>
+                            <button type="button" class="chrome-btn" title="Full extent - the agency's whole map" aria-label="Full extent" @onclick="@(() => S.FullExtent())"><Icon Name="extent" /></button>
+                            <button type="button" class="chrome-btn" title="Show all units" aria-label="Show all units" @onclick="@(() => S.ShowAllUnits())"><Icon Name="truck" /></button>
+                        </div>
 
-            <div class="map-chrome">
-                <div class="zoom-group">
-                    <button type="button" title="Zoom in (+)" aria-label="Zoom in" @onclick="@(() => S.ZoomBy(1))"><Icon Name="plus" /></button>
-                    <button type="button" title="Zoom out (-)" aria-label="Zoom out" @onclick="@(() => S.ZoomBy(-1))"><Icon Name="minus" /></button>
-                </div>
-                <button type="button" class="chrome-btn" title="Reset Map - back to the zoom extent (Ctrl+R)" aria-label="Reset map" @onclick="@(() => S.ResetMap())"><Icon Name="home" /></button>
-                <button type="button" class="chrome-btn" title="Full extent - the agency's whole map" aria-label="Full extent" @onclick="@(() => S.FullExtent())"><Icon Name="extent" /></button>
-                <button type="button" class="chrome-btn" title="Show all units" aria-label="Show all units" @onclick="@(() => S.ShowAllUnits())"><Icon Name="truck" /></button>
-            </div>
+                        @if (S.HasRoute)
+                        {
+                            <div class="distance-box">
+                                <div class="t"><Icon Name="route" /> @S.RouteTitle</div>
+                                <div><span class="muted">Distance:</span> <b>@S.RouteMiles</b> <span class="muted">miles ·</span> <b>@S.RouteKm</b> <span class="muted">km</span></div>
+                                <div class="muted small">@S.RouteNote</div>
+                            </div>
+                        }
 
-            @if (S.HasRoute)
-            {
-                <div class="distance-box">
-                    <div class="t"><Icon Name="route" /> @S.RouteTitle</div>
-                    <div><span class="muted">Distance:</span> <b>@S.RouteMiles</b> <span class="muted">miles ·</span> <b>@S.RouteKm</b> <span class="muted">km</span></div>
-                    <div class="muted small">@S.RouteNote</div>
-                </div>
-            }
+                        @if (S.IsMarking)
+                        {
+                            <div class="marking-banner">Click the map to mark a location · Esc cancels</div>
+                        }
 
-            @if (S.IsMarking)
-            {
-                <div class="marking-banner">Click the map to mark a location · Esc cancels</div>
-            }
-
-            <div class="map-note">
-                @S.SelectedBaseMap ·
-                @(S.HasApiKey ? "ArcGIS basemap styles" : "OpenStreetMap - no ArcGIS key")
-                · @(S.IsDemoBoard ? "Demo board, approximate demo geography" : S.HasApiKey ? "Calls geocoded by ArcGIS" : "Calls on approximate demo geography")
-            </div>
-            <div class="map-attribution">@(S.HasApiKey && S.SelectedBaseMap != BaseMaps.OpenStreetMap ? "Powered by Esri · Esri, HERE, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors" : "Powered by Esri · © OpenStreetMap contributors")</div>
-        </section>
-
-        <ControlsPanel S="S" />
-    </main>
-
-    <div class="lw-bottom">
-        <MonitorPanel S="S" />
-        <SelectionPanel S="S" />
-    </div>
+                        <div class="map-note">
+                            @S.SelectedBaseMap ·
+                            @(S.HasApiKey ? "ArcGIS basemap styles" : "OpenStreetMap - no ArcGIS key")
+                            · @(S.IsDemoBoard ? "Demo board, approximate demo geography" : S.HasApiKey ? "Calls geocoded by ArcGIS" : "Calls on approximate demo geography")
+                        </div>
+                        <div class="map-attribution">@(S.HasApiKey && S.SelectedBaseMap != BaseMaps.OpenStreetMap ? "Powered by Esri · Esri, HERE, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors" : "Powered by Esri · © OpenStreetMap contributors")</div>
+                    </section>
+                        </DxSplitterPane>
+                        <DxSplitterPane CssClass="lw-pane-controls">
+                            <ControlsPanel S="S" />
+                        </DxSplitterPane>
+                    </Panes>
+                </DxSplitter>
+            </DxSplitterPane>
+            <DxSplitterPane CssClass="lw-pane-bottom">
+                <DxSplitter CssClass="lw-split lw-split-cols" Width="100%" Height="100%" SeparatorSize="8">
+                    <Panes>
+                        <DxSplitterPane CssClass="lw-pane-monitor" Size="@($"calc(100% - {_selectionPx + Gap}px)")" SizeChanged="@(_ => MeasureAsync("selection"))" MinSize="360px">
+                            <MonitorPanel S="S" />
+                        </DxSplitterPane>
+                        <DxSplitterPane CssClass="lw-pane-selection">
+                            <SelectionPanel S="S" />
+                        </DxSplitterPane>
+                    </Panes>
+                </DxSplitter>
+            </DxSplitterPane>
+        </Panes>
+    </DxSplitter>
 
     <footer class="lw-status">
         <span class="status-text">@S.Status</span>
@@ -108,12 +134,98 @@
 @code {
     private CadMap? _map;
     private IJSObjectReference? _shell;
+
+    // Pane sizes (DxSplitter), in px. Defaults are the mock-up's: 274 / 294 px side panels, a
+    // 250 px monitor row and a 440 px selection panel. Dragged sizes are kept in localStorage.
+    private const int Folded = 38;
+    private const int Gap = 8;
+    private int _focusPx = 274;
+    private int _controlsPx = 294;
+    private int _bottomPx = 250;
+    private int _selectionPx = 440;
+
+    private int FocusPx => S.IsFocusPanelExpanded ? _focusPx : Folded;
+
+    // DxSplitter keeps a dragged size until it is handed a DIFFERENT Size. A separator next to a
+    // folded panel can still be dragged, which would leave the 38px rail half open; flipping this
+    // suffix ("" / " + 0px") re-sends the same size so the splitter snaps the rail back.
+    private bool _nudge;
+    private string Nudge => _nudge ? " + 0px" : "";
+    private int ControlsPx => S.IsControlsPanelExpanded ? _controlsPx : Folded;
+
+    /// <summary>After a drag: read the panes' real sizes back, keep them, and save them.</summary>
+    private async Task MeasureAsync(params string[] panes)
+    {
+        if (_shell is null) return;
+        try
+        {
+            // A folded side panel must stay a 38px rail whatever was dragged.
+            if (await FoldedRailMovedAsync("focus", S.IsFocusPanelExpanded) |
+                await FoldedRailMovedAsync("controls", S.IsControlsPanelExpanded))
+            {
+                _nudge = !_nudge;
+            }
+
+            foreach (var pane in panes)
+            {
+                var size = await _shell.InvokeAsync<double[]?>("paneSize", ".lw-pane-" + pane);
+                if (size is null || size.Length < 2) continue;
+                var px = (int)Math.Round(pane == "bottom" ? size[1] : size[0]);
+                if (px <= Folded) continue;  // a folded rail is not a size to keep
+                switch (pane)
+                {
+                    case "focus" when S.IsFocusPanelExpanded: _focusPx = px; break;
+                    case "controls" when S.IsControlsPanelExpanded: _controlsPx = px; break;
+                    case "bottom": _bottomPx = px; break;
+                    case "selection": _selectionPx = px; break;
+                    default: continue;
+                }
+                await _shell.InvokeVoidAsync("saveLayout", pane, px.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task<bool> FoldedRailMovedAsync(string pane, bool expanded)
+    {
+        if (expanded || _shell is null) return false;
+        var size = await _shell.InvokeAsync<double[]?>("paneSize", ".lw-pane-" + pane);
+        return size is { Length: > 0 } && Math.Abs(size[0] - Folded) > 1;
+    }
+
+    private async Task LoadLayoutAsync()
+    {
+        if (_shell is null) return;
+        try
+        {
+            _focusPx = await Saved("focus", _focusPx);
+            _controlsPx = await Saved("controls", _controlsPx);
+            _bottomPx = await Saved("bottom", _bottomPx);
+            _selectionPx = await Saved("selection", _selectionPx);
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task<int> Saved(string key, int fallback)
+    {
+        var text = await _shell!.InvokeAsync<string?>("loadLayout", key);
+        return int.TryParse(text, out var px) && px > Folded ? px : fallback;
+    }
     private DotNetObjectReference<Home>? _self;
     private PeriodicTimer? _gpsTimer;
     private readonly CancellationTokenSource _cts = new();
 
+    /// <summary>The call CAD opened the map on (LwCadMapping --event): /?event=2026-0000002</summary>
+    [SupplyParameterFromQuery(Name = "event")] public string? StartEvent { get; set; }
+
+    /// <summary>The unit CAD had selected, used when no call is given: /?unit=C206</summary>
+    [SupplyParameterFromQuery(Name = "unit")] public string? StartUnit { get; set; }
+
     protected override void OnInitialized()
     {
+        S.SetStartTarget(StartEvent, StartUnit);
         S.Changed += OnSessionChanged;
         Board.Changed += OnBoardChanged;
         _ = RunGpsTimer();
@@ -126,6 +238,7 @@
         if (Board.Current.Version != S.Board.Version || S.Board.IsLoading != Board.Current.IsLoading) await S.OnBoardChanged(Board.Current);
 
         _shell = await JS.InvokeAsync<IJSObjectReference>("import", "./js/shell.js");
+        await LoadLayoutAsync();
         _self = DotNetObjectReference.Create(this);
         await _shell.InvokeVoidAsync("registerShortcuts", _self);
     }

@@ -302,3 +302,33 @@ button { font: inherit; color: inherit; }
   position: absolute; right: 0; bottom: 0; z-index: 5; font-size: 10px; color: #323232; padding: 1px 6px;
   background: rgba(255, 255, 255, .8); border-top-left-radius: 4px; pointer-events: none;
 }
+
+/* ---------------------------------------------------------- resizable layout (DxSplitter) */
+/* The two splitters replace the fixed .lw-main / .lw-bottom grids: the 8px separators are the old
+   gaps, now draggable. Panes clip their cards; the map (ArcGIS) follows its pane's size itself. */
+.lw-split-rows { flex: 1 1 auto; min-height: 0; padding: 8px; box-sizing: border-box; background: transparent; border: 0; }
+.lw-split, .lw-split .dxbl-splitter-pane { background: transparent; border: 0; }
+.lw-split .dxbl-splitter-pane { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* DevExpress wraps each pane's content in .dxbl-splitter-pane-content: make it a column so the card
+   inside (or a nested splitter) fills the pane exactly and scrolls inside itself. */
+.lw-split .dxbl-splitter-pane > .dxbl-splitter-pane-content {
+  flex: 1 1 auto; min-height: 0; min-width: 0; height: 100%; overflow: hidden; padding: 0;
+  display: flex; flex-direction: column;
+}
+.lw-split .dxbl-splitter-pane-content > * { flex: 1 1 auto; min-height: 0; min-width: 0; }
+.lw-split .dxbl-splitter-separator { background: transparent; }
+.lw-split .dxbl-splitter-separator:hover,
+.lw-split .dxbl-splitter-separator:focus-visible { background: var(--lw-accent-soft); }
+.lw-split .map-card { height: 100%; }
+/* ---------------------------------------------------------- focus maps: wrap N per row, GPS fold */
+/* The focus maps are a grid of --per-row columns (1-5, the header combo box); each close-up keeps a
+   16:10 shape, so wider panels give bigger maps and extra maps wrap onto new rows and scroll. */
+.focus-list { display: grid; grid-template-columns: repeat(var(--per-row, 1), minmax(0, 1fr)); align-content: start; }
+.focus-list > .empty { grid-column: 1 / -1; }
+.focus-list .focus-card { min-width: 0; }
+.focus-list .focus-map-view { height: auto; aspect-ratio: 16 / 10; min-height: 90px; }
+/* GPS Tracking folded: the maps take the whole panel. */
+.focus-list.fill { flex: 1 1 auto; }
+.gps-head .icon-btn { margin-left: -6px; }
+.per-row { display: inline-flex; align-items: center; gap: 6px; color: var(--lw-text-muted); font-size: 11px; white-space: nowrap; }
+.per-row .per-row-combo { width: 58px; }
